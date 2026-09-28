@@ -1,6 +1,6 @@
-using GaussManin
+using GaussManinResurgence
 using Test
 
-@testset "GaussManin.jl" begin
+@testset "GaussManinResurgence.jl" begin
     # Write your tests here.
 end
