@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+GaussManin = "bf37962f-de54-4ea6-ba5d-bd3815a08703"
+
+[sources]
+GaussManin = {path = ".."}
