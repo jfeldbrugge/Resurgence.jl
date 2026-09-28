@@ -1,14 +1,14 @@
-using GaussManin
+using GaussManinResurgence
 using Documenter
 
-DocMeta.setdocmeta!(GaussManin, :DocTestSetup, :(using GaussManin); recursive=true)
+DocMeta.setdocmeta!(GaussManinResurgence, :DocTestSetup, :(using GaussManinResurgence); recursive=true)
 
 makedocs(;
-    modules=[GaussManin],
+    modules=[GaussManinResurgence],
     authors="Job Feldbrugge <14946916+jfeldbrugge@users.noreply.github.com> and contributors",
-    sitename="GaussManin.jl",
+    sitename="GaussManinResurgence.jl",
     format=Documenter.HTML(;
-        canonical="https://jfeldbrugge.github.io/GaussManin.jl",
+        canonical="https://jfeldbrugge.github.io/GaussManinResurgence.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/jfeldbrugge/GaussManin.jl",
+    repo="github.com/jfeldbrugge/GaussManinResurgence.jl",
     devbranch="main",
 )
