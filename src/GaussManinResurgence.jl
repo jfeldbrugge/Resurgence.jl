@@ -1,6 +1,6 @@
 module GaussManinResurgence
 
-    using DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, HomotopyContinuation, SpecialFunctions, QuadGK, CairoMakie
+    using DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, GenericSchur, HomotopyContinuation, SpecialFunctions, QuadGK, CairoMakie
 	import Singular, Polynomials
 
     include("Saddles.jl")
@@ -17,5 +17,6 @@ module GaussManinResurgence
     export plotPoles, plotAdjacencyPoles
 
     export Series, one_s, letter, mul, sinv, sexp, base_value, transport,
-        local_singular, loop_path, monodromy_factor, continue_along
+        local_singular, loop_path, monodromy_factor, continue_along,
+        evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices
 end

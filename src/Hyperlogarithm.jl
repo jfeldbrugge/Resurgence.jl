@@ -155,3 +155,28 @@ function continue_along(Σ, z0, loops, N; K = 40)
     mul(L, Mtot, N)
 end
 
+# Matrix representation of the Fuchsian system  Y' = Σ_s R_s/(z-σ_s) Y :
+# the algebra homomorphism x_s ↦ R_s maps L to Y, i.e. [i1,...,in] ↦ R_i1 ⋯ R_in
+# (no reversal: regular_transport already builds words as vcat(s, w)).
+
+"Weight-resolved evaluation: D[r+1] is the contribution of the words of length r."
+function evaluate_series_by_weight(S::Series, Rs, N)
+    n = size(Rs[1], 1)
+    D = [zeros(ComplexF64, n, n) for _ in 0:N]
+    for (w, c) in S
+        length(w) <= N && (D[length(w)+1] .+= c .* 
+        prod((Rs[a] for a in w); init = Matrix{ComplexF64}(I, size(Rs[1])...)))
+    end
+    D
+end
+
+"""
+Based monodromy matrices T[j] of  Y' = Σ_s R_s/(z-σ_s) Y  for the ccw loops around σ_j
+(base point z0, straight stems), weight-resolved: T[j][r+1] is the weight-r part.
+"""
+function monodromy_pieces(Σ, Rs, z0, N; K = 40)
+    [evaluate_series_by_weight(monodromy_factor(Σ, j, z0, N; orient = 1, K = K)[1], Rs, N)
+     for j in eachindex(Σ)]
+end
+
+monodromy_matrices(Σ, Rs, z0, N; K = 40) = sum.(monodromy_pieces(Σ, Rs, z0, N; K = K))

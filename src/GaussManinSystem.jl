@@ -4,6 +4,7 @@ mutable struct GaussManinSystem
 	vars
 	ϕ
 	λs
+	V
 	Rs
 	Πs
 	n
@@ -130,12 +131,13 @@ function GaussManin(f)
 	B = collect(transpose(toQ.(A1)))
 
 	# Project B - (1 + d/2) I onto the partial fraction matrices Rⱼ
-	λs = eigen(ComplexF64.(M)).values
+	M_eigen = eigen(M)
+	λs = M_eigen.values
+	V = M_eigen.vectors
 	Πs = [prod((M - λs[i] * I) / (λs[j] - λs[i]) for i in eachindex(λs) if i ≠ j) for j in eachindex(λs)]
 
-	# Rs = [Π * (B - (1 - dim / 2) * I) for Π in Πs]
-	Rs = [Π * (B - I) for Π in Πs]
+	Rs = [Π * (B - (1 - dim / 2) * I) for Π in Πs]
 
-	GM = GaussManinSystem(M, B, vars, from_singular(b), λs, Rs, Πs, n)
+	GM = GaussManinSystem(M, B, vars, from_singular(b), λs, V, Rs, Πs, n)
 	return GM
 end
