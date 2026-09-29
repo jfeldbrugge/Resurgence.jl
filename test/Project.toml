@@ -1,5 +1,7 @@
 [deps]
+DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 GaussManinResurgence = "bf37962f-de54-4ea6-ba5d-bd3815a08703"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]

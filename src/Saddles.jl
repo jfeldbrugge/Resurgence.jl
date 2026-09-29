@@ -14,7 +14,7 @@ end
 """
 Refine saddle
 """
-function refineSaddle(f::DynamicPolynomials.Polynomial, x0, tol = 1e-500, max_iterations = 10000)
+function refineSaddle(f, x0, tol = 10 * eps(BigFloat), max_iterations = 100)
     f = sum(Complex{BigFloat}(c) * m for (c, m) in zip(coefficients(f), monomials(f)));
 	vars = variables(f)
     grad = differentiate(f, vars)

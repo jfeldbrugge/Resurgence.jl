@@ -2,7 +2,7 @@
 
 julia_version = "1.13.1"
 manifest_format = "2.1"
-project_hash = "e295533102cf7d892e97ed04e91e697649fb9b4b"
+project_hash = "ab96378c6a41ff9d334067050f2343ac299e9b87"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -173,6 +173,17 @@ version = "7.30.2"
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
     StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+
+[[deps.ArrayLayouts]]
+deps = ["FillArrays", "LinearAlgebra", "StaticArrays"]
+git-tree-sha1 = "8d6c4d0a4bab1bbd0de2a4b3f525b7584319e0ab"
+registries = "General"
+uuid = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
+version = "1.13.0"
+weakdeps = ["SparseArrays"]
+
+    [deps.ArrayLayouts.extensions]
+    ArrayLayoutsSparseArraysExt = "SparseArrays"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -802,10 +813,17 @@ uuid = "a0844989-3bd2-4988-8bea-c9407ab0941b"
 version = "1.2.0"
 
 [[deps.GaussManinResurgence]]
-deps = ["CairoMakie", "DynamicPolynomials", "HomotopyContinuation", "LinearAlgebra", "MultivariatePolynomials", "Polynomials", "QuadGK", "Singular", "SpecialFunctions"]
+deps = ["CairoMakie", "DynamicPolynomials", "GenericSchur", "HomotopyContinuation", "LinearAlgebra", "MultivariatePolynomials", "Polynomials", "QuadGK", "Singular", "SpecialFunctions"]
 path = ".."
 uuid = "bf37962f-de54-4ea6-ba5d-bd3815a08703"
 version = "1.0.0-DEV"
+
+[[deps.GenericSchur]]
+deps = ["LinearAlgebra", "MatrixFactorizations", "Preferences", "Printf", "UUIDs"]
+git-tree-sha1 = "e3d1202ab9ae72edd4c46134ecbb6746ec420486"
+registries = "General"
+uuid = "c145ed77-6b09-5dd9-b285-bf645a82121e"
+version = "0.5.8"
 
 [[deps.GeometryBasics]]
 deps = ["EarCut_jll", "LinearAlgebra", "PrecompileTools", "Random", "StaticArrays"]
@@ -1359,6 +1377,19 @@ git-tree-sha1 = "aa1078778be5a8e5259ff04fbc3d258b3e78d464"
 registries = "General"
 uuid = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
 version = "0.6.9"
+
+[[deps.MatrixFactorizations]]
+deps = ["ArrayLayouts", "LinearAlgebra", "Printf", "Random"]
+git-tree-sha1 = "3bb3cf4685f1c90f22883f4c4bb6d203fa882b79"
+registries = "General"
+uuid = "a3b82374-2e81-5b9e-98ce-41277c0e4c87"
+version = "3.1.3"
+
+    [deps.MatrixFactorizations.extensions]
+    MatrixFactorizationsBandedMatricesExt = "BandedMatrices"
+
+    [deps.MatrixFactorizations.weakdeps]
+    BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 
 [[deps.Missings]]
 deps = ["DataAPI"]

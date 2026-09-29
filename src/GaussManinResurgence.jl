@@ -18,5 +18,6 @@ module GaussManinResurgence
 
     export Series, one_s, letter, mul, sinv, sexp, base_value, transport,
         local_singular, loop_path, monodromy_factor, continue_along,
-        evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices
+        evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices,
+        keyhole_paths, stokes_constant, stokes_constants
 end

@@ -105,6 +105,7 @@ function transport(Σ, L, path, N; K = 40, ρ = 0.3)
         a, b = path[i], path[i+1]; pts = [a]
         while true
             p = pts[end]; d = dist(p, Σ)
+            d > 1e-8 * abs(b - a) || error("transport: path $a → $b runs into a singular point")
             abs(b - p) <= ρ*d && (push!(pts, b); break)
             push!(pts, p + ρ*d*(b - p)/abs(b - p))
         end
@@ -180,3 +181,60 @@ function monodromy_pieces(Σ, Rs, z0, N; K = 40)
 end
 
 monodromy_matrices(Σ, Rs, z0, N; K = 40) = sum.(monodromy_pieces(Σ, Rs, z0, N; K = K))
+
+"Evaluate a free series in the residue matrices: [i1,...,in] ↦ R_i1 ⋯ R_in (no reversal)."
+evaluate_series(S::Series, Rs, N) = sum(evaluate_series_by_weight(S, Rs, N))
+
+# Stokes constants from a keyhole contour (Sec. VI.A):  U± = P exp ∫_{γ±} A(t) dt  with
+# A(t) = Σ_a R_a/(t - σ_a), where γ± run from a (near σ_i) to b (beyond σ_j) passing σ_j on the
+# left (+) / right (−) of the directed line σ_i → σ_j.  The keyhole holonomy is S_j = U₋⁻¹ U₊.
+# The saddle solutions are the local solutions Φ̂_a(t) = Y_a(t) v_a, with Y_a = ev(L_a) the
+# local Frobenius solution at σ_a and v_a the eigenvector of R_a (R_a v_a = tr(R_a) v_a), on the
+# principal branch along the ray σ_i → σ_j. For the crossing i → j,
+#     Φ̂_i^+(b) - Φ̂_i^-(b) = (U₊ - U₋) Φ̂_i(a) = K_{j←i} Φ̂_j(b).
+
+"""
+Keyhole paths (γ₊, γ₋) from a = σ_i + r_i e to b = σ_j + r_j e, e = (σ_j - σ_i)/|σ_j - σ_i|.
+Singular points σ_k on (or close to) the segment σ_i → σ_j are avoided by half-circles on the
+left (side = +1) or right (side = -1) of the directed line; γ₊ and γ₋ differ only around σ_j.
+"""
+function keyhole_paths(Σ, i, j; npts = 12, side = 1)
+    e  = (Σ[j] - Σ[i]) / abs(Σ[j] - Σ[i]); len = abs(Σ[j] - Σ[i])
+    r(k) = 0.3 * dist(Σ[k], Σ; skip = k)
+    arc(k, o) = [Σ[k] + r(k)*e*cis(o*π*(1 - m/npts)) for m in 0:npts]  # σ_k - r_k e → σ_k + r_k e
+    s(k) = real(conj(e) * (Σ[k] - Σ[i]))                                # position along the line
+    between = [k for k in eachindex(Σ) if k ∉ (i, j) && 0 < s(k) < len &&
+               abs(imag(conj(e) * (Σ[k] - Σ[i]))) < r(k)]
+    stem = [Σ[i] + r(i)*e; reduce(vcat, (arc(k, side) for k in sort(between; by = s)); init = eltype(Σ)[])]
+    [stem; arc(j, 1)], [stem; arc(j, -1)]
+end
+
+"""
+Stokes constant K_{j←i} for the Laplace contour of saddle i crossing the Borel singularity σ_j,
+from the keyhole contour around σ_j. `vs[a]` is the leading vector of Φ̂_a (default: the eigenvector
+of R_a with unit first entry). Returns (K, S, rel_residual) with S = U₋⁻¹U₊ the keyhole holonomy
+and rel_residual the part of the jump not proportional to Φ̂_j (should be ≈ 0).
+"""
+function stokes_constant(Σ, Rs, i, j, N; K = 40, npts = 12, paths = keyhole_paths(Σ, i, j; npts = npts),
+                         vs = [leading_vector(R) for R in Rs])
+    γp, γm = paths
+    Up = evaluate_series(transport(Σ, one_s(), γp, N; K = K), Rs, N)
+    Um = evaluate_series(transport(Σ, one_s(), γm, N; K = K), Rs, N)
+    Φi = evaluate_series(local_singular(Σ, i, γp[1],   N; K = K), Rs, N) * vs[i]
+    Φj = evaluate_series(local_singular(Σ, j, γp[end], N; K = K), Rs, N) * vs[j]
+    d  = (Up - Um) * Φi
+    Kji = dot(Φj, d) / dot(Φj, Φj)
+    Kji, Um \ Up, norm(d - Kji * Φj) / norm(d)
+end
+
+"Eigenvector of the (rank-one) residue R for its nonzero-trace direction, normalised to unit first entry."
+function leading_vector(R)
+    E = eigen(ComplexF64.(R)); v = E.vectors[:, argmax(abs.(E.values))]
+    iszero(v[1]) ? v / norm(v) : v / v[1]
+end
+
+"Matrix of Stokes constants K[j, i] = K_{j←i} for all ordered pairs i ≠ j (zero on the diagonal)."
+function stokes_constants(Σ, Rs, N; kwargs...)
+    n = length(Σ)
+    [i == j ? zero(ComplexF64) : stokes_constant(Σ, Rs, i, j, N; kwargs...)[1] for j in 1:n, i in 1:n]
+end

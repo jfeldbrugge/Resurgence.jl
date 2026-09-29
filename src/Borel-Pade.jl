@@ -12,7 +12,7 @@ function findPoles(trans)
     order = length(trans.Ts) ÷ 2 - 1
     borelTransform = BorelTransform(trans.Ts, big"0")
     _, den = TaylorToPade(borelTransform, order, order)
-    poles = Polynomials.roots(Polynomials.Polynomial(ComplexF64.(den)))
+    poles = Polynomials.roots(Polynomials.Polynomial(den))
     return poles
 end
 
@@ -33,7 +33,7 @@ function findStokesConstants(transseries, ϵ = 1e-2)
         
             order = length(trans_j.Ts) ÷ 2 - 1
             num, den = TaylorToPade(Polynomials.coeffs(Φs), order, order)
-            pole = argmin(p -> abs(p - 1), Polynomials.roots(Polynomials.Polynomial(ComplexF64.(den))))
+            pole = argmin(p -> abs(p - 1), Polynomials.roots(Polynomials.Polynomial(den)))
         
             if abs(pole - 1) < ϵ
                 p = Polynomials.Polynomial(num)
@@ -80,7 +80,7 @@ function BorelPadeResum(trans, k)
 
     integrand(t, k) = exp(-k * t) * PadeEvaluate(num, den, t)
 
-    poles = Polynomials.roots(Polynomials.Polynomial(ComplexF64.(den)))
+    poles = Polynomials.roots(Polynomials.Polynomial(den))
     poles_angles = sort(angle.(poles))
 
     ϵ = 0.01
