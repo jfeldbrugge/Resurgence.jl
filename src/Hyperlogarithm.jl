@@ -136,11 +136,16 @@ end
 """
 Monodromy factor M with L^γ(z0) = L(z0) · M for the loop around σ_i based at z0
 (straight segment z0 → σ_i, one turn, back). Returns (M, C), C the regularised value at σ_i.
+A different (homotopy class of) stem can be given as a polyline `stem` from z0 to a point q
+close to σ_i (within the local disk, |q - σ_i| < distance to the other letters).
 """
-function monodromy_factor(Σ, i, z0, N; orient = 1, K = 40)
+function monodromy_factor(Σ, i, z0, N; orient = 1, K = 40, stem = nothing)
     r = 0.3 * dist(Σ[i], Σ; skip = i)
-    q = Σ[i] + r*(z0 - Σ[i])/abs(z0 - Σ[i])
-    Lq = transport(Σ, base_value(Σ, z0, N; K = K), [z0, q], N; K = K)
+    path = stem === nothing ? [z0, Σ[i] + r*(z0 - Σ[i])/abs(z0 - Σ[i])] : stem
+    path[1] == z0 || error("monodromy_factor: the stem must start at z0")
+    q = path[end]
+    abs(q - Σ[i]) < dist(Σ[i], Σ; skip = i) || error("monodromy_factor: the stem must end close to σ_i")
+    Lq = transport(Σ, base_value(Σ, z0, N; K = K), path, N; K = K)
     C  = mul(sinv(local_singular(Σ, i, q, N; K = K), N), Lq, N)
     M  = mul(mul(sinv(C, N), sexp(scale(letter(i), orient*2π*im), N), N), C, N)
     M, C
@@ -238,3 +243,21 @@ function stokes_constants(Σ, Rs, N; kwargs...)
     n = length(Σ)
     [i == j ? zero(ComplexF64) : stokes_constant(Σ, Rs, i, j, N; kwargs...)[1] for j in 1:n, i in 1:n]
 end
+
+"""
+Loop factor M = L(z0)⁻¹ L^γ(z0) from explicit transport around `loop_path` (straight stem, circle,
+back). An independent check of `monodromy_factor`, which uses C⁻¹ exp(2πi x_j) C instead.
+"""
+function direct_loop_factor(Σ, j, z0, N; orient = 1, K = 40, npts = 96)
+    L0 = base_value(Σ, z0, N; K = K)
+    Lγ = transport(Σ, L0, loop_path(Σ, j, z0; orient = orient, npts = npts), N; K = K)
+    mul(sinv(L0, N), Lγ, N)
+end
+
+"""
+Weight-resolved  tr((T_i - I)(T_j - I)):  entry r-1 is the total-weight-r contribution
+Σ_{p=1}^{r-1} tr(D_i[p+1] D_j[r-p+1]), r = 2..N, with D_i the weight pieces of T_i
+(e.g. from `monodromy_pieces`). The leading entry is (2πi)² tr(R_i R_j).
+"""
+trace_contributions(Di, Dj, N) =
+    ComplexF64[sum(tr(Di[p+1] * Dj[r-p+1]) for p in 1:r-1) for r in 2:N]

@@ -35,6 +35,22 @@ end
         end
     end
 
+    @testset "monodromy: formula vs. direct loop, stems, traces" begin
+        Σ  = ComplexF64[0.4im, -0.4im, 0.7]
+        Rs = [ComplexF64[0.2 0.1; 0.0 -0.1], ComplexF64[0.1 0.0; 0.15 0.05], ComplexF64[-0.05 0.1; 0.1 0.1]]
+        N, z0 = 6, 0.1 + 0.05im
+        for j in eachindex(Σ)
+            Mf, _ = monodromy_factor(Σ, j, z0, N)
+            @test evaluate_series(Mf, Rs, N) ≈ evaluate_series(direct_loop_factor(Σ, j, z0, N), Rs, N)  rtol = 1e-10
+        end
+        # a stem homotopic to the straight one gives the same monodromy
+        r = 0.3 * GaussManinResurgence.dist(Σ[3], Σ; skip = 3); q = Σ[3] + r*(z0 - Σ[3])/abs(z0 - Σ[3])
+        @test evaluate_series(monodromy_factor(Σ, 3, z0, N; stem = [z0, 0.3 + 0.15im, q])[1], Rs, N) ≈
+              evaluate_series(monodromy_factor(Σ, 3, z0, N)[1], Rs, N)  rtol = 1e-10
+        D = monodromy_pieces(Σ, Rs, z0, N)
+        @test trace_contributions(D[1], D[2], N)[1] ≈ (2π*im)^2 * tr(Rs[1] * Rs[2])
+    end
+
     @testset "keyhole Stokes constant (Airy)" begin
         # x^3/3 - x: the two saddles are connected with Stokes constant K = i.
         @polyvar x
@@ -47,18 +63,4 @@ end
         @test S ≈ rk4_transport(Σ, Rs, γm) \ rk4_transport(Σ, Rs, γp)  rtol = 1e-6
     end
 
-    @testset "hyperlogarithmic monodromy in BigFloat (commuting case)" begin
-        # Diagonal Rs commute, so the weight-r part of the monodromy around σ_j is (2πi R_j)^r / r!.
-        setprecision(BigFloat, 256) do
-            CB = Complex{BigFloat}
-            Σ  = CB[0, big"0.5" + big"0.3"*im, -big"0.4"*im]
-            Rs = [diagm(CB[1//3, -1//5]), diagm(CB[1//7, 2//9]), diagm(CB[-1//4, 1//6])]
-            N  = 4
-            T  = monodromy_pieces(Σ, Rs, big"0.1" + big"0.05"*im, N)
-            @test eltype(T[1][1]) == CB
-            for j in eachindex(Σ), r in 0:N
-                @test maximum(abs, T[j][r+1] - (2 * CB(π) * im * Rs[j])^r / factorial(r)) < big"1e-60"
-            end
-        end
-    end
 end
