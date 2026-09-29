@@ -63,4 +63,28 @@ end
         @test S ≈ rk4_transport(Σ, Rs, γm) \ rk4_transport(Σ, Rs, γp)  rtol = 1e-6
     end
 
+    @testset "keyhole Stokes constants, matrix transport" begin
+        # Airy: the matrix back-end agrees with the hyperlogarithm one.
+        @polyvar x
+        GM = GaussManin(x^3/3 - x)
+        Σ  = ComplexF64.(-im .* GM.λs); Rs = [ComplexF64.(R) for R in GM.Rs]
+        Km, Sm, resm = stokes_constant(Σ, Rs, 1, 2, 0; method = :matrix)
+        @test Km ≈ im  atol = 1e-10
+        @test resm < 1e-10
+        γp, γm = keyhole_paths(Σ, 1, 2)
+        @test matrix_transport(Σ, Rs, γp) ≈ rk4_transport(Σ, Rs, γp)  rtol = 1e-6
+        # four saddles: with T₀ = 1/√det H normalisation all Stokes constants are integers
+        @polyvar x y
+        f = 1//3*x^3 + 1//3*y^3 + 1//2*x*y - x - 2y
+        hess = differentiate(differentiate(f, [x, y]), [x, y])
+        saddles = [refineSaddle(f, s)[1] for s in findAllSaddles(f)]
+        u = f.(saddles); T0s = [1 / sqrt(det([h(p) for h in hess])) for p in saddles]
+        GM = GaussManin(f)
+        Σ  = ComplexF64.(-im .* GM.λs); Rs = [ComplexF64.(R) for R in GM.Rs]
+        T0 = [ComplexF64(T0s[argmin(abs.(u .- λ))]) for λ in GM.λs]
+        Kmat = stokes_constants(Σ, Rs, 0; T0 = T0, method = :matrix)
+        @test maximum(abs, Kmat - round.(real.(Kmat))) < 1e-8
+        @test count(!iszero, round.(Int, real.(Kmat))) == 10
+    end
+
 end
