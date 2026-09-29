@@ -20,5 +20,6 @@ module GaussManinResurgence
         local_singular, loop_path, monodromy_factor, continue_along,
         evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices,
         keyhole_paths, stokes_constant, stokes_constants,
-        direct_loop_factor, trace_contributions
+        direct_loop_factor, trace_contributions,
+        matrix_transport, frobenius_solution
 end
