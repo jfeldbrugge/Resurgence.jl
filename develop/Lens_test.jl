@@ -114,18 +114,18 @@ end
 # Ecalle's Mould expansion
 ######################################
 
-ComplexF64.([4π^2 * tr(Ri * Rj) for Ri in GM.Rs, Rj in GM.Rs])
+# ComplexF64.([4π^2 * tr(Ri * Rj) for Ri in GM.Rs, Rj in GM.Rs])
 
-N = 4
-Σ = [trans.f₀ for trans in transseries]
+# N = 4
+# Σ = [trans.f₀ for trans in transseries]
 
-T = monodromy_matrices(Σ,  GM.Rs, ComplexF64(0), N; K = 40);
-K_estimated = [tr((T[i] - I) * (T[j] - I)) for i in 1:GM.n, j in 1:GM.n];
+# T = monodromy_matrices(Σ,  GM.Rs, ComplexF64(0), N; K = 40);
+# K_estimated = [tr((T[i] - I) * (T[j] - I)) for i in 1:GM.n, j in 1:GM.n];
 
-K_int
-sum(abs.(abs.(K_int) .- abs.(K_estimated)))
+# K_int
+# sum(abs.(abs.(K_int) .- abs.(K_estimated)))
 
-K_estimated
+# K_estimated
 
 ######################################
 # Stokes constants via the keyhole contour
@@ -145,9 +145,5 @@ K21, res
 Kmat = stokes_constants(Σ, Rs, 6; T0 = T0)   # Kmat[j, i] = K_{j←i}
 Kmat_int = round.(Int, real.(Kmat))
 
-# Convergence check in the hyperlogarithm weight N
-# for N in 4:2:8
-#     println("N = $N: ", round.(stokes_constants(Σ, Rs, N; T0 = T0), digits = 6))
-# end
 
 alert("Done")
