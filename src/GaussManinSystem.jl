@@ -3,6 +3,7 @@ mutable struct GaussManinSystem
 	B
 	vars
 	ϕ
+	λs
 	Rs
 	Πs
 	n
@@ -71,7 +72,7 @@ end
 function degrevlex_less(a::Vector{Int}, b::Vector{Int})
     sum(a) != sum(b) && return sum(a) < sum(b)
     for i in length(a):-1:1                 # reverse lex: last differing variable decides
-        a[i] != b[i] && return a[i] > b[i]
+        a[i] != b[i] && return a[i] < b[i]
     end
     return false
 end
@@ -132,8 +133,9 @@ function GaussManin(f)
 	λs = eigen(ComplexF64.(M)).values
 	Πs = [prod((M - λs[i] * I) / (λs[j] - λs[i]) for i in eachindex(λs) if i ≠ j) for j in eachindex(λs)]
 
-	Rs = [Π * (B - (1 - dim / 2) * I) for Π in Πs]
+	# Rs = [Π * (B - (1 - dim / 2) * I) for Π in Πs]
+	Rs = [Π * (B - I) for Π in Πs]
 
-	GM = GaussManinSystem(M, B, vars, from_singular(b), Rs, Πs, n)
+	GM = GaussManinSystem(M, B, vars, from_singular(b), λs, Rs, Πs, n)
 	return GM
 end
