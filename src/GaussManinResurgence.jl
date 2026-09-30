@@ -10,6 +10,7 @@ module GaussManinResurgence
     include("Borel-Pade.jl")
     include("Plots.jl")
     include("Hyperlogarithm.jl")
+    include("Mould.jl")
 
     export findAllSaddles, refineSaddle
     export GaussManinSystem, GaussManin
@@ -21,5 +22,6 @@ module GaussManinResurgence
         evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices,
         keyhole_paths, stokes_constant, stokes_constants,
         direct_loop_factor, trace_contributions,
-        matrix_transport, frobenius_solution
+        matrix_transport, frobenius_solution,
+        path_strength, truncation_bound, sufficient_N, stokes_constant_increment
 end
