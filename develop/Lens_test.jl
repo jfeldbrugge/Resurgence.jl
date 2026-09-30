@@ -75,13 +75,16 @@ begin
 end
 
 M = 100;
-transseries = Vector{Expansion}(undef, GM.n);
-for j in 1:GM.n
-    λⱼ, μⱼ, Ts = asymptotic(j, GM, M)
-    index = argmin(abs.(u .- λⱼ))
-    Ts = T0s[index] .* Ts
-    transseries[j] = Expansion(saddles[index], -im * λⱼ, μⱼ, im * Ts[1,:] ./ sqrt(big(im)))
-end;
+begin
+    transseries = Vector{Expansion}(undef, GM.n);
+    for j in 1:GM.n
+        λⱼ, μⱼ, Ts = asymptotic(j, GM, M)
+        index = argmin(abs.(u .- λⱼ))
+        Ts = T0s[index] .* Ts
+        transseries[j] = Expansion(saddles[index], -im * λⱼ, μⱼ, im * Ts[1,:] ./ sqrt(big(im)))
+        # transseries[j] = Expansion(saddles[index], -sqrt(big(im)) * λⱼ, μⱼ, im * Ts[1,:])
+    end;
+end
 
 ######################################
 # Borel-Pade
@@ -122,7 +125,7 @@ T0 = [ComplexF64(T0s[argmin(abs.(u .- λ))]) for λ in GM.λs];
 
 # Stokes constant K_{j←i}: Laplace ray of saddle i crossing t_j (res ≈ 0 when converged)
 Kmat = stokes_constants(Σ, Rs, 6; T0 = T0, method = :matrix)
-Kmat = stokes_constants(Σ, Rs, 4; T0 = T0, method = :hyperlog) 
+# Kmat = stokes_constants(Σ, Rs, 4; T0 = T0, method = :hyperlog) 
 Kmat_int = round.(Int, real.(Kmat))
 
 alert("Done")
