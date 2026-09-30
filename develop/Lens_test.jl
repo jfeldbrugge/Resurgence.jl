@@ -11,37 +11,36 @@ setprecision(BigFloat, 2 * 512)
 # Define integral
 ######################################
 
-# y, β = 1, 1;
-# @polyvar x1 x2 x3 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}}
+y, β = 1, 1;
+@polyvar x1 x2 x3 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}};
 
-# PP = 2β + (1 + x1^2) * (x1 - y)^2
-# QQ = 2 * (1 + x1^2)
+PP = 2β + (1 + x1^2) * (x1 - y)^2;
+QQ = 2 * (1 + x1^2);
 
-# f = PP * x2 + x3 * (x2 * QQ - 1)
+f = PP * x2 + x3 * (x2 * QQ - 1)
 
 # @polyvar x 
 # f = x^3 + x
 
-@polyvar x 
-f = x^4 + 2x^2 + x
+# @polyvar x 
+# f = x^4 + 2x^2 + x
 
 # @polyvar x y 
 # f = 1//3 * x^3 + 1//3 * y^3 + 1//2 * x * y - x - 2 * y
 
-vars = variables(f)
-
-jacobi = differentiate(f, vars)
-hessian = differentiate(jacobi, vars)
+vars = variables(f);
+jacobi = differentiate(f, vars);
+hessian = differentiate(jacobi, vars);
 
 ######################################
 # Find saddle points
 ######################################
 
-saddles = findAllSaddles(f)
-saddles = sort(saddles, by=p->abs.(f(p)))
-saddles = [refineSaddle(f, sd)[1] for sd in saddles]
-T0s = [1 / sqrt(det([hess(p) for hess in hessian])) for p in saddles]
-u = f.(saddles)
+# saddles = findAllSaddles(f);
+saddles = sort(findAllSaddles(f), by=p->abs.(f(p)))
+saddles = [refineSaddle(f, sd)[1] for sd in saddles];
+T0s = [1 / sqrt(det([hess(p) for hess in hessian])) for p in saddles];
+u = f.(saddles);
 
 ######################################
 # Find the Gauss-Manin system
@@ -49,17 +48,17 @@ u = f.(saddles)
 
 GM = GaussManin(f);
 
-GM.ϕ
-GM.M
-GM.B
-GM.λs
+# GM.ϕ
+# GM.M
+# GM.B
+# GM.λs
 
 ######################################
 # Find asymptotic series
 ######################################
 
-λⱼ, μⱼ, Ts = asymptotic(1, GM, 10)
-Ts = T0s[argmin(abs.(u .- λⱼ))] .* Ts
+λⱼ, μⱼ, Ts = asymptotic(1, GM, 10);
+Ts = T0s[argmin(abs.(u .- λⱼ))] .* Ts;
 
 transpose(Ts)
 
@@ -75,7 +74,7 @@ begin
 	fig
 end
 
-M = 100
+M = 100;
 transseries = Vector{Expansion}(undef, GM.n);
 for j in 1:GM.n
     λⱼ, μⱼ, Ts = asymptotic(j, GM, M)
@@ -114,36 +113,16 @@ end
 # Ecalle's Mould expansion
 ######################################
 
-# ComplexF64.([4π^2 * tr(Ri * Rj) for Ri in GM.Rs, Rj in GM.Rs])
-
-# N = 4
-# Σ = [trans.f₀ for trans in transseries]
-
-# T = monodromy_matrices(Σ,  GM.Rs, ComplexF64(0), N; K = 40);
-# K_estimated = [tr((T[i] - I) * (T[j] - I)) for i in 1:GM.n, j in 1:GM.n];
-
-# K_int
-# sum(abs.(abs.(K_int) .- abs.(K_estimated)))
-
-# K_estimated
-
-######################################
-# Stokes constants via the keyhole contour
-######################################
-
 # Borel singularities t_a = -iλ_a and residues R_a of A(t) = Σ R_a/(t - t_a)
-Σ  = ComplexF64.(-im .* GM.λs)
-Rs = [ComplexF64.(R) for R in GM.Rs]
+Σ  = ComplexF64.(-im .* GM.λs);
+Rs = [ComplexF64.(R) for R in GM.Rs];
 
 # Normalise each saddle solution like its asymptotic series: T₀ = 1/√det H of the saddle of λ_a
-T0 = [ComplexF64(T0s[argmin(abs.(u .- λ))]) for λ in GM.λs]
+T0 = [ComplexF64(T0s[argmin(abs.(u .- λ))]) for λ in GM.λs];
 
 # Stokes constant K_{j←i}: Laplace ray of saddle i crossing t_j (res ≈ 0 when converged)
-K21, S, res = stokes_constant(Σ, Rs, 1, 2, 6; T0 = T0)
-K21, res
-
-Kmat = stokes_constants(Σ, Rs, 6; T0 = T0)   # Kmat[j, i] = K_{j←i}
+Kmat = stokes_constants(Σ, Rs, 6; T0 = T0, method = :matrix)
+Kmat = stokes_constants(Σ, Rs, 4; T0 = T0, method = :hyperlog) 
 Kmat_int = round.(Int, real.(Kmat))
-
 
 alert("Done")
