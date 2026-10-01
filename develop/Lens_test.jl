@@ -36,7 +36,6 @@ hessian = differentiate(jacobi, vars);
 # Find saddle points
 ######################################
 
-# saddles = findAllSaddles(f);
 saddles = sort(findAllSaddles(f), by=p->abs.(f(p)))
 saddles = [refineSaddle(f, sd)[1] for sd in saddles];
 T0s = [1 / sqrt(det([hess(p) for hess in hessian])) for p in saddles];
@@ -80,9 +79,8 @@ begin
     for j in 1:GM.n
         λⱼ, μⱼ, Ts = asymptotic(j, GM, M)
         index = argmin(abs.(u .- λⱼ))
-        Ts = T0s[index] .* Ts
-        transseries[j] = Expansion(saddles[index], -im * λⱼ, μⱼ, im * Ts[1,:] ./ sqrt(big(im)))
-        # transseries[j] = Expansion(saddles[index], -sqrt(big(im)) * λⱼ, μⱼ, im * Ts[1,:])
+        Ts = sqrt(big(im)) .* T0s[index] .* Ts
+        transseries[j] = Expansion(saddles[index], -im * λⱼ, μⱼ, Ts[1,:])
     end;
 end
 
