@@ -24,5 +24,5 @@ module GaussManinResurgence
         direct_loop_factor, trace_contributions,
         matrix_transport, frobenius_solution,
         path_strength, truncation_bound, sufficient_N, stokes_constant_increment
-    export plotAdjacencyGM
+    export plotAdjacencyGM, plotStokesGraphGM
 end
