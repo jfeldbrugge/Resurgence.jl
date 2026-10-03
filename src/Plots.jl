@@ -113,3 +113,30 @@ function plotAdjacencyPoles(transseries, K, poles, plotRange = 3)
 	axislegend(ax)
     return fig, ax
 end
+
+
+"""
+Plot the evaluated coefficients A.
+"""
+function plotAdjacencyGM(Σ, K, plotRange = 3) 
+	fig = Figure()
+	ax = Axis(fig[1,1], xlabel = "Re", ylabel = "Im", limits=(-plotRange, plotRange,-plotRange, plotRange), aspect = 1)
+	
+	for i in axes(K, 1), j in axes(K, 2)
+		if K[i, j] != 0
+			f0i = Σ[i]
+			f0j = Σ[j]
+			
+			lines!(ax, [Point2f.(real(f0i), imag(f0i)), Point2f.(real(f0j), imag(f0j))], color = :red, linewidth = 2)
+		end
+	end
+	
+	for i in eachindex(Σ)
+		f0 = Σ[i]
+		scatter!(ax, [real(f0)], [imag(f0)], color = :black)
+		text!(ax, string(i), position = Point2f(real(f0), imag(f0)), align = (:right, :bottom), offset = (8, 8), label = string(i))
+	end
+
+	axislegend(ax)
+    return fig, ax
+end
