@@ -232,7 +232,7 @@ function plotStokesGraphGM(Σ, K; plotRange = nothing, from = :column, orient = 
 		pm = P((p0 + p1) / 2)                          # label disc at the midpoint
 		scatter!(ax, [pm], marker = :circle, markersize = 2.2labelsize, color = :white,
 			strokecolor = col, strokewidth = 1.5)
-		text!(ax, lab, position = pm, align = (:center, :center), fontsize = labelsize, color = col)
+		text!(ax, lab, position = pm, align = (:center, :center), fontsize = labelsize, color = :black)
 	end
 
 	scatter!(ax, real.(z), imag.(z), color = :black, markersize = 10)
