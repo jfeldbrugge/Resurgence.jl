@@ -11,6 +11,8 @@ module GaussManinResurgence
     include("Plots.jl")
     include("Hyperlogarithm.jl")
     include("Mould.jl")
+    include("SouthEast.jl")
+    include("Superasymptotics.jl")
 
     export findAllSaddles, refineSaddle
     export GaussManinSystem, GaussManin
@@ -25,4 +27,6 @@ module GaussManinResurgence
         matrix_transport, frobenius_solution,
         path_strength, truncation_bound, sufficient_N, stokes_constant_increment
     export plotAdjacencyGM, plotStokesGraphGM
+    export morse_orientation, initial_intersection_numbers, southeast_edges, southeast, relevance
+    export saddle_series, singulants, divergence_rate, superasymptotic
 end

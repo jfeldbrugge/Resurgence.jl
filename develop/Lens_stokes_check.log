@@ -1,0 +1,9 @@
+  Activating project at `~/JuliaPackages/GaussManinResurgence/develop`
+max deviation from integers: 4.402620315809065e-15
+Σ = ComplexF64[1.5381 + 1.4835im, -1.5381 + 1.4835im, 0.0 - 0.4155im, 0.2736 - 1.7758im, -0.2736 - 1.7758im]
+5×5 Matrix{Int64}:
+ 0   0  -1  -2  -1
+ 0   0  -1   1   2
+ 1   1   0  -1  -1
+ 2  -1   1   0   1
+ 1  -2   1  -1   0

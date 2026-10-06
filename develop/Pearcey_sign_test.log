@@ -1,0 +1,9 @@
+  Activating project at `~/JuliaPackages/GaussManinResurgence/develop`
+x=1//1 y=1//2  Σ=ComplexF64[0.0 + 0.312im, 0.579 - 0.094im, -0.579 - 0.094im]
+  fit n=[1, 1, 0]   SE(+)=[1, -1, 0]   SE(-)=[1, 1, 0]
+x=2//1 y=1//1  Σ=ComplexF64[-0.0 + 0.711im, -1.566 - 0.105im, 1.566 - 0.105im]
+  fit n=[1, 0, 1]   SE(+)=[1, 0, -1]   SE(-)=[1, 0, 1]
+x=1//2 y=-1//2  Σ=ComplexF64[0.0 + 0.358im, -0.059 - 0.117im, 0.059 - 0.117im]
+  fit n=[1, 0, 1]   SE(+)=[1, 0, -1]   SE(-)=[1, 0, 1]
+x=-3//2 y=1//1  Σ=ComplexF64[-0.0 + 0.438im, 1.14 + 0.031im, -1.14 + 0.031im]
+  fit n=[1, 1, 0]   SE(+)=[1, -1, 0]   SE(-)=[1, 1, 0]

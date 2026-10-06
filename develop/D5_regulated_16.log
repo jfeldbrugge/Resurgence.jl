@@ -1,0 +1,14 @@
+  Activating project at `~/JuliaPackages/GaussManinResurgence/develop`
+ε = 1/16, max deviation from integers: 7.07024563696572e-14
+Σ = ComplexF64[1.1854 + 23.1106im, -1.1854 + 23.1106im, -0.0 + 0.6455im, 0.5392 - 0.3048im, -0.5392 - 0.3048im, -1.813 - 1.181im, 1.813 - 1.181im, 2.6946 - 1.9475im, -2.6946 - 1.9475im]
+9×9 Matrix{Int64}:
+ 0   0  -1   0   0  -1   0  -1   0
+ 0   0   1   0   0   0   1   0   1
+ 1  -1   0   1  -1   0  -1  -1   0
+ 0   0  -1   0  -1   1  -1  -1   1
+ 0   0   1   1   0   1  -1  -1   1
+ 1   0  -1  -1  -1   0   1   0   0
+ 0  -1   0   1   1  -1   0   0   0
+ 1   0   0   1   1   0   0   0  -1
+ 0  -1  -1  -1  -1   0   0   1   0
+saved D5_regulated_16.jls

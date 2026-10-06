@@ -11,14 +11,17 @@ setprecision(BigFloat, 2 * 512)
 # Define integral
 ######################################
 
+@polyvar x y
+f = x^6 / 6 - x + 2(y^3 / 3 - y)
+
 # One-dimensional Lorentzian lens
-y, β = 1, 1;
-@polyvar x1 x2 x3 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}};
+# y, β = 1, 1;
+# @polyvar x1 x2 x3 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}};
 
-PP = 2β + (1 + x1^2) * (x1 - y)^2;
-QQ = 2 * (1 + x1^2);
+# PP = 2β + (1 + x1^2) * (x1 - y)^2;
+# QQ = 2 * (1 + x1^2);
 
-f = PP * x2 + x3 * (x2 * QQ - 1)
+# f = PP * x2 + x3 * (x2 * QQ - 1)
 
 # Two-dimensional Lorentzian lens
 # y1, y2 = 1, 1;
