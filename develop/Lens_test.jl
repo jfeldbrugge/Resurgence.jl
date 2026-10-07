@@ -11,8 +11,8 @@ setprecision(BigFloat, 2 * 512)
 # Define integral
 ######################################
 
-@polyvar x y
-f = x^6 / 6 - x + 2(y^3 / 3 - y)
+# @polyvar x y
+# f = x^6 / 6 - x + 2(y^3 / 3 - y)
 
 # One-dimensional Lorentzian lens
 # y, β = 1, 1;
@@ -24,13 +24,13 @@ f = x^6 / 6 - x + 2(y^3 / 3 - y)
 # f = PP * x2 + x3 * (x2 * QQ - 1)
 
 # Two-dimensional Lorentzian lens
-# y1, y2 = 1, 1;
-# @polyvar x1 x2 x3 x4 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}};
+y1, y2 = 1, 1;
+@polyvar x1 x2 x3 x4 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}};
 
-# PP = 2 + x1^4 + x2^2 + 2 * x2^4 - 2 * x1^3 * y1 + y1^2 - 2 * x1 * (y1 + 2 * x2^2 * y1) - 2 * x2 * y2 - 4 * x2^3 * y2 + y2^2 + 2 * x2^2 * (y1^2 + y2^2) +  x1^2 * (1 + 3 * x2^2 + y1^2 - 2 * x2 * y2 + y2^2);
-# QQ = 2 * (1 + x1^2 + 2 * x2^2);
+PP = 2 + x1^4 + x2^2 + 2 * x2^4 - 2 * x1^3 * y1 + y1^2 - 2 * x1 * (y1 + 2 * x2^2 * y1) - 2 * x2 * y2 - 4 * x2^3 * y2 + y2^2 + 2 * x2^2 * (y1^2 + y2^2) +  x1^2 * (1 + 3 * x2^2 + y1^2 - 2 * x2 * y2 + y2^2);
+QQ = 2 * (1 + x1^2 + 2 * x2^2);
 
-# f = PP * x3 + x4 * (x3 * QQ - 1)
+f = PP * x3 + x4 * (x3 * QQ - 1)
 
 # @polyvar x 
 # f = x^3 + x
@@ -150,6 +150,5 @@ begin
     # save("LorentzianLens.png", fig)
     fig
 end
-
 
 alert("Done")
