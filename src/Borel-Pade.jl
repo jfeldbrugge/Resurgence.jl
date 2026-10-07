@@ -76,7 +76,7 @@ function BorelPadeResum(trans, k)
     borelTransform = BorelTransform(trans.Ts, big"0");
 
     order = length(trans.Ts) ÷ 2 - 1
-    num, den = Resurgence.TaylorToPade(borelTransform, order, order)
+    num, den = TaylorToPade(borelTransform, order, order)
 
     integrand(t, k) = exp(-k * t) * PadeEvaluate(num, den, t)
 
