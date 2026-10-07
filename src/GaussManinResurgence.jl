@@ -24,7 +24,7 @@ module GaussManinResurgence
         evaluate_series, evaluate_series_by_weight, monodromy_pieces, monodromy_matrices,
         keyhole_paths, stokes_constant, stokes_constants,
         direct_loop_factor, trace_contributions,
-        matrix_transport, frobenius_solution,
+        matrix_transport, frobenius_solution, frobenius_gauge, local_monodromy,
         path_strength, truncation_bound, sufficient_N, stokes_constant_increment
     export plotAdjacencyGM, plotStokesGraphGM
     export morse_orientation, initial_intersection_numbers, southeast_edges, southeast, relevance

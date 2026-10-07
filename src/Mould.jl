@@ -36,7 +36,11 @@ the jump not proportional to Φ̂_j (should be ≈ 0).
 
 `method = :hyperlog` evaluates the free hyperlogarithm series truncated at weight N (giving access
 to the weight expansion); `method = :matrix` transports the matrices directly, with no weight
-truncation (N is then ignored). Use :matrix for more than a few saddles.
+truncation (N is then ignored). Use :matrix for more than a few saddles. `method = :loop` uses the
+single-loop formula U₊ - U₋ = U_arc₊ (I - L) U_stem: the two paths share their stem and differ by
+one loop around σ_j, whose monodromy L = G(p) e^{2πi R_j} G(p)⁻¹ follows from the Frobenius normal
+form at σ_j (`local_monodromy`). It avoids subtracting two transported propagators; the second
+return value is then L instead of the keyhole holonomy.
 
 `N` is either an integer (used as given) or `:auto`. With `:auto` (hyperlog only) the smallest N
 with certified truncation error |K_N - K| < 1/2 is used (`sufficient_N`, keywords `Nmax`, `sharp`,
@@ -74,8 +78,25 @@ function stokes_constant(Σ, Rs, i, j, N; K = 40, npts = 12, paths = keyhole_pat
         Um = matrix_transport(Σ, Rs, γm; K = K)
         Φi = frobenius_solution(Σ, Rs, i, γp[1],   vs[i]; K = K)
         Φj = frobenius_solution(Σ, Rs, j, γp[end], vs[j]; K = K)
+    elseif method == :loop
+        # single-loop formula: γ₊ and γ₋ share the stem up to p = σ_j - r_j e and differ by one loop
+        # around σ_j, so U₊ - U₋ = U_arc₊ (I - L) U_stem, with L = G(p) e^{2πi R_j} G(p)⁻¹ the local
+        # monodromy of the counterclockwise loop at p. No difference of two transports is formed.
+        narc = npts + 1                                        # points on the half-circle around σ_j
+        tol = 1e-12 * max(1, maximum(abs, γp))                 # cis(π) and cis(-π) differ by rounding
+        length(γp) == length(γm) && γp[1:end-narc] == γm[1:end-narc] && abs(γp[end-npts] - γm[end-npts]) < tol ||
+            error("stokes_constant: method = :loop needs paths that share their stem (keyhole_paths)")
+        p = γp[end-npts]
+        Ustem = matrix_transport(Σ, Rs, γp[1:end-npts]; K = K)
+        Uarc  = matrix_transport(Σ, Rs, γp[end-npts:end]; K = K)
+        L = local_monodromy(Σ, Rs, j, p; K = K)
+        Φi = frobenius_solution(Σ, Rs, i, γp[1],   vs[i]; K = K)
+        Φj = frobenius_solution(Σ, Rs, j, γp[end], vs[j]; K = K)
+        d  = Uarc * ((I - L) * (Ustem * Φi))
+        Kji = dot(Φj, d) / dot(Φj, Φj)
+        return Kji, L, norm(d - Kji * Φj) / max(norm(d), norm(Φj))
     else
-        error("stokes_constant: method must be :hyperlog or :matrix")
+        error("stokes_constant: method must be :hyperlog, :matrix or :loop")
     end
     d  = (Up - Um) * Φi
     Kji = dot(Φj, d) / dot(Φj, Φj)
@@ -120,6 +141,39 @@ function matrix_step(Σ, Rs, a, b, K)
         push!(c, u * sum(A[m+1] * c[k-m+1] * u^m for m in 0:k) / (k + 1))
     end
     sum(c)
+end
+
+"""
+    frobenius_gauge(Σ, Rs, j, z; K = 40)
+
+Holomorphic factor G(z) of the Frobenius normal form Y(t) = G(t) (t - σ_j)^{R_j} C of the Fuchsian
+system at σ_j, with G(σ_j) = I. With A(t) = R_j/(t - σ_j) + Σ_m A_m (t - σ_j)^m, the coefficients
+of G(t) = Σ_m G_m (t - σ_j)^m solve  m G_m + G_m R_j - R_j G_m = Σ_{i<m} A_i G_{m-1-i},
+which is uniquely solvable when no two eigenvalues of R_j differ by a positive integer (e.g. R_j
+nilpotent). Needs |z - σ_j| < distance from σ_j to the other letters.
+"""
+function frobenius_gauge(Σ, Rs, j, z; K = 40)
+    R = ComplexF64.(Rs[j]); n = size(R, 1)
+    A = taylor_A(Σ, Rs, Σ[j], K; skip = j)
+    G = [Matrix{ComplexF64}(I, n, n)]
+    for m in 1:K
+        rhs = sum(A[i+1] * G[m-i] for i in 0:m-1)
+        push!(G, sylvester(m * I - R, R, -rhs))                # (mI - R) G_m + G_m R = rhs
+    end
+    u = z - Σ[j]
+    sum(G[m+1] * u^m for m in 0:K)
+end
+
+"""
+    local_monodromy(Σ, Rs, j, p; K = 40)
+
+Monodromy L = G(p) e^{2πi R_j} G(p)⁻¹ of the counterclockwise loop around σ_j based at p (in the
+Frobenius disk of σ_j): a solution Y continued once around σ_j becomes L Y. For nilpotent R_j,
+e^{2πi R_j} = I + 2πi R_j and L - I has the rank of R_j.
+"""
+function local_monodromy(Σ, Rs, j, p; K = 40)
+    G = frobenius_gauge(Σ, Rs, j, p; K = K)
+    G * exp(2π * im * ComplexF64.(Rs[j])) / G
 end
 
 "Propagator U with Y(path[end]) = U Y(path[1]) along the polyline `path` (same steps as `transport`)."
