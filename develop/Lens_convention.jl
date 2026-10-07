@@ -1,7 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-using GaussManinResurgence, DynamicPolynomials, MultivariatePolynomials, LinearAlgebra
+using Resurgence, DynamicPolynomials, MultivariatePolynomials, LinearAlgebra
 setprecision(BigFloat, 2 * 512)
 
 # Convert the Stokes constants of the lens lift (stokes_constants, K[l,j] = K_{l←j}, package

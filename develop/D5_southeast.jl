@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 
-using GaussManinResurgence, DynamicPolynomials
+using Resurgence, DynamicPolynomials
 using LinearAlgebra, Serialization, Printf
 
 ######################################

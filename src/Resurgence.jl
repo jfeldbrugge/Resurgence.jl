@@ -1,4 +1,4 @@
-module GaussManinResurgence
+module Resurgence
 
     using DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, GenericSchur, HomotopyContinuation, SpecialFunctions, QuadGK, CairoMakie
 	import Singular, Polynomials

@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 
-using GaussManinResurgence
+using Resurgence
 using DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, Serialization
 
 setprecision(BigFloat, 2 * 512)

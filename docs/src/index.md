@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = GaussManinResurgence
+CurrentModule = Resurgence
 ```
 
-# GaussManinResurgence
+# Resurgence
 
-Documentation for [GaussManinResurgence](https://github.com/jfeldbrugge/GaussManinResurgence.jl).
+Documentation for [Resurgence](https://github.com/jfeldbrugge/Resurgence.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [GaussManinResurgence]
+Modules = [Resurgence]
 ```

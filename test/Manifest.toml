@@ -2,7 +2,7 @@
 
 julia_version = "1.13.1"
 manifest_format = "2.1"
-project_hash = "ab96378c6a41ff9d334067050f2343ac299e9b87"
+project_hash = "a8a8c1a1737cb513f92cc69705d9890c94a5027f"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -811,12 +811,6 @@ git-tree-sha1 = "becc397f7cfb06e343496ae6ffb04818a851da51"
 registries = "General"
 uuid = "a0844989-3bd2-4988-8bea-c9407ab0941b"
 version = "1.2.0"
-
-[[deps.GaussManinResurgence]]
-deps = ["CairoMakie", "DynamicPolynomials", "GenericSchur", "HomotopyContinuation", "LinearAlgebra", "MultivariatePolynomials", "Polynomials", "QuadGK", "Singular", "SpecialFunctions"]
-path = ".."
-uuid = "bf37962f-de54-4ea6-ba5d-bd3815a08703"
-version = "1.0.0-DEV"
 
 [[deps.GenericSchur]]
 deps = ["LinearAlgebra", "MatrixFactorizations", "Preferences", "Printf", "UUIDs"]
@@ -1862,6 +1856,12 @@ git-tree-sha1 = "62389eeff14780bfe55195b7204c0d8738436d64"
 registries = "General"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.1"
+
+[[deps.Resurgence]]
+deps = ["CairoMakie", "DynamicPolynomials", "GenericSchur", "HomotopyContinuation", "LinearAlgebra", "MultivariatePolynomials", "Polynomials", "QuadGK", "Singular", "SpecialFunctions"]
+path = ".."
+uuid = "bf37962f-de54-4ea6-ba5d-bd3815a08703"
+version = "1.0.0-DEV"
 
 [[deps.RingLists]]
 deps = ["Random"]

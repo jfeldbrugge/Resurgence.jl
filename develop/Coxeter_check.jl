@@ -2,7 +2,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 
-using GaussManinResurgence
+using Resurgence
 using DynamicPolynomials, LinearAlgebra, Printf
 
 setprecision(BigFloat, 2 * 512)

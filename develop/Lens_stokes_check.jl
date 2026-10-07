@@ -1,7 +1,7 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
-using GaussManinResurgence, DynamicPolynomials, MultivariatePolynomials, LinearAlgebra
+using Resurgence, DynamicPolynomials, MultivariatePolynomials, LinearAlgebra
 setprecision(BigFloat, 2 * 512)
 
 # Stokes constants of the one-dimensional Lorentzian lens (y = 1) from its polynomial lift, with
