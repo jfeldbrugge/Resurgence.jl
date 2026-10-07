@@ -67,6 +67,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using GaussManinResurgence
-          DocMeta.setdocmeta!(GaussManinResurgence, :DocTestSetup, :(using GaussManinResurgence); recursive=true)
-          doctest(GaussManinResurgence)
+          using Resurgence
+          DocMeta.setdocmeta!(Resurgence, :DocTestSetup, :(using Resurgence); recursive=true)
+          doctest(Resurgence)

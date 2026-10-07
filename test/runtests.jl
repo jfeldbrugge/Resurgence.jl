@@ -1,4 +1,4 @@
-using GaussManinResurgence
+using Resurgence
 using LinearAlgebra
 using DynamicPolynomials
 using Test
@@ -20,7 +20,7 @@ function rk4_transport(Σ, Rs, path; h = 1e-3)
     Y
 end
 
-@testset "GaussManinResurgence.jl" begin
+@testset "Resurgence.jl" begin
     @testset "hyperlogarithmic monodromy vs. ODE" begin
         Σ  = ComplexF64[0.4im, -0.4im, 0.7]
         Rs = [ComplexF64[0.2 0.1; 0.0 -0.1], ComplexF64[0.1 0.0; 0.15 0.05], ComplexF64[-0.05 0.1; 0.1 0.1]]
@@ -44,7 +44,7 @@ end
             @test evaluate_series(Mf, Rs, N) ≈ evaluate_series(direct_loop_factor(Σ, j, z0, N), Rs, N)  rtol = 1e-10
         end
         # a stem homotopic to the straight one gives the same monodromy
-        r = 0.3 * GaussManinResurgence.dist(Σ[3], Σ; skip = 3); q = Σ[3] + r*(z0 - Σ[3])/abs(z0 - Σ[3])
+        r = 0.3 * Resurgence.dist(Σ[3], Σ; skip = 3); q = Σ[3] + r*(z0 - Σ[3])/abs(z0 - Σ[3])
         @test evaluate_series(monodromy_factor(Σ, 3, z0, N; stem = [z0, 0.3 + 0.15im, q])[1], Rs, N) ≈
               evaluate_series(monodromy_factor(Σ, 3, z0, N)[1], Rs, N)  rtol = 1e-10
         D = monodromy_pieces(Σ, Rs, z0, N)
