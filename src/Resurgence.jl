@@ -13,6 +13,7 @@ module Resurgence
     include("Mould.jl")
     include("SouthEast.jl")
     include("Superasymptotics.jl")
+    include("Hyperterminants.jl")
 
     export findAllSaddles, refineSaddle
     export GaussManinSystem, GaussManin
@@ -29,4 +30,5 @@ module Resurgence
     export plotAdjacencyGM, plotStokesGraphGM
     export morse_orientation, initial_intersection_numbers, southeast_edges, southeast, relevance
     export saddle_series, singulants, divergence_rate, superasymptotic
+    export hyperterminant, hyperasymptotic, path_lengths
 end
