@@ -70,25 +70,31 @@ function evaluateAdjacency(transseries, ϵ = 0.1)
 end
 
 """
-Resumation with Borel-Pade
+    BorelPadeResum(trans, k; ϵ = 0.01)
+
+Borel-Padé sum of the series Σₘ Tₘ/kᵐ (`trans.Ts`): the Borel transform Φ(t) = Σₘ Tₘ tᵐ/m! is
+replaced by its diagonal Padé approximant and Laplace transformed, k ∫₀^∞ e^{-kt} Φ(t) dt, which
+reproduces Σₘ Tₘ/kᵐ term by term. When a Padé pole lies within an angle `ϵ` of the positive real
+axis (a Stokes line), the ray is rotated upwards, halfway to the next pole direction (at most π/4):
+the lateral sum from above. Returns `(integral, error)`.
 """
-function BorelPadeResum(trans, k)
-    borelTransform = BorelTransform(trans.Ts, big"0");
+function BorelPadeResum(trans, k; ϵ = 0.01)
+    borelTransform = BorelTransform(trans.Ts, big"1")    # Tₘ tᵐ / m!
 
     order = length(trans.Ts) ÷ 2 - 1
     num, den = TaylorToPade(borelTransform, order, order)
 
-    integrand(t, k) = exp(-k * t) * PadeEvaluate(num, den, t)
+    integrand(t, k) = k * exp(-k * t) * PadeEvaluate(num, den, t)
 
-    poles = roots(Polynomials.Polynomial(den))
-    poles_angles = sort(angle.(poles))
+    poles = Polynomials.roots(Polynomials.Polynomial(den))
+    angles = angle.(poles)
 
-    ϵ = 0.01
-    θ = 0
-    if poles_angles[1] < ϵ
-        θ = poles_angles[2] / 2
+    θ = 0.0
+    if any(a -> abs(a) < ϵ, angles)
+        above = filter(>(ϵ), angles)
+        θ = min(minimum(above; init = π / 2) / 2, π / 4)
     end
 
-    int, err = quadgk(t -> exp(im * θ) * integrand(t * exp(im * θ), k), 0.0, Inf)
+    int, err = quadgk(t -> cis(θ) * integrand(t * cis(θ), k), 0.0, Inf)
     return int, err
 end
