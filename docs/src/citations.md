@@ -15,6 +15,15 @@ This code accompanies the publication [Asymptotic evaluation of multidimensional
     archivePrefix = {arXiv},
     url = {https://arxiv.org/abs/2610.22767},
 }
+
+@misc{Feldbrugge2026,
+  author = {Feldbrugge, Job},
+  title = {Resurgence.jl -- Julia implementation of Resurgence for integrals},
+  year = {2026},
+  month = {oct},
+  doi = {10.5281/zenodo.23557502},
+  url = {https://doi.org/10.5281/zenodo.23557502}
+}
 ```
 
 Please also consider citing the following works that have been foundational to the methods implemented in this package:
