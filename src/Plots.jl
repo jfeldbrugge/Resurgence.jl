@@ -16,6 +16,9 @@
 # 	fig
 # end
 
+"""
+Plot the poles.
+"""
 function plotPoles(poles, transseries, plotRange = 3) 
     fig = Figure()
     ax = Axis(fig[1,1], xlabel = "Re", ylabel = "Im", limits=(-plotRange, plotRange,-plotRange, plotRange), aspect = 1)
@@ -141,7 +144,9 @@ function plotAdjacencyGM(Σ, K, plotRange = 3)
     return fig, ax
 end
 
-"Format a Stokes constant: integers without decimals, otherwise rounded to `digits`."
+"""
+Format a Stokes constant: integers without decimals, otherwise rounded to `digits`.
+"""
 function stokes_label(k; digits = 2, atol = 1e-6)
 	if abs(imag(k)) < atol
 		r = real(k)

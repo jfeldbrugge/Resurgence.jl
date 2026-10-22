@@ -79,7 +79,9 @@ function divergence_rate(T; tail = 10, component = 1)
     Float64(sum(est) / length(est))
 end
 
-"Truncation order: `:singulant` (N = ⌈|k| F⌉), `:smallest` (index of the smallest term) or an Int."
+"""
+Truncation order: `:singulant` (N = ⌈|k| F⌉), `:smallest` (index of the smallest term) or an Int.
+"""
 function truncation_order(T, F, k, truncation)
     M = length(T)
     truncation isa Integer && return min(truncation, M)

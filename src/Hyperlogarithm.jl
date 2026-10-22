@@ -21,7 +21,9 @@ function add!(A::Series, B::Series, c = 1)
     A
 end
 
-"Concatenation product, truncated at weight N."
+"""
+Concatenation product, truncated at weight N.
+"""
 function mul(A::Series, B::Series, N::Int)
     C = Series()
     for (u, a) in A, (v, b) in B
@@ -31,7 +33,9 @@ function mul(A::Series, B::Series, N::Int)
     C
 end
 
-"Inverse of a series with invertible constant term."
+"""
+Inverse of a series with invertible constant term.
+"""
 function sinv(A::Series, N)
     a0 = A[Int[]]; X = scale(A, 1/a0); X[Int[]] -= 1
     R = one_s(); P = one_s()
@@ -39,13 +43,22 @@ function sinv(A::Series, N)
     scale(R, 1/a0)
 end
 
-"exp(A) for A without constant term."
+"""
+exp(A) for A without constant term.
+"""
 function sexp(A::Series, N)
-    R = one_s(); P = one_s()
-    for k in 1:N; P = scale(mul(P, A, N), 1/k); add!(R, P); end
+    R = one_s()
+    P = one_s()
+    for k in 1:N
+        P = scale(mul(P, A, N), 1/k)
+        add!(R, P)
+    end
     R
 end
 
+"""
+Distance function
+"""
 dist(p, Σ; skip = 0) = minimum(abs(p - Σ[s]) for s in eachindex(Σ) if s != skip)
 
 """
@@ -99,7 +112,9 @@ function local_singular(Σ, j, z, N; K = 40)
     mul(H, sexp(scale(xj, log(u)), N), N)
 end
 
-"Continue a solution L (given at path[1]) along the polyline `path`, left-multiplying transports."
+"""
+Continue a solution L (given at path[1]) along the polyline `path`, left-multiplying transports.
+"""
 function transport(Σ, L, path, N; K = 40, ρ = 0.3)
     for i in 1:length(path)-1
         a, b = path[i], path[i+1]; pts = [a]
@@ -116,7 +131,9 @@ function transport(Σ, L, path, N; K = 40, ρ = 0.3)
     L
 end
 
-"L(z0) on the principal branch: straight path from the (tangential) base point 0."
+"""
+L(z0) on the principal branch: straight path from the (tangential) base point 0.
+"""
 function base_value(Σ, z0, N; K = 40)
     j = findfirst(==(0), Σ)
     j === nothing && return transport(Σ, one_s(), [0.0im, z0], N; K = K)   # 0 regular
@@ -126,9 +143,12 @@ function base_value(Σ, z0, N; K = 40)
     transport(Σ, local_singular(Σ, j, z1, N; K = K), [z1, z0], N; K = K)
 end
 
-"Polyline for the loop: z0 → straight to radius r around σ_i → circle (ccw if orient=+1) → back."
+"""
+Polyline for the loop: z0 → straight to radius r around σ_i → circle (ccw if orient=+1) → back.
+"""
 function loop_path(Σ, i, z0; r = 0.3*dist(Σ[i], Σ; skip = i), orient = 1, npts = 24)
-    σ = Σ[i]; q = σ + r*(z0 - σ)/abs(z0 - σ); θ0 = angle(q - σ)
+    σ = Σ[i]; q = σ + r*(z0 - σ) / abs(z0 - σ)
+    θ0 = angle(q - σ)
     circ = [σ + r*cis(θ0 + orient*2π*k/npts) for k in 1:npts]
     [z0; q; circ; z0]
 end
@@ -151,7 +171,9 @@ function monodromy_factor(Σ, i, z0, N; orient = 1, K = 40, stem = nothing)
     M, C
 end
 
-"L^γ(z0) for a sequence of loops, e.g. [(2,+1),(3,-1)] = around σ_2 ccw, then σ_3 cw."
+"""
+L^γ(z0) for a sequence of loops, e.g. [(2,+1),(3,-1)] = around σ_2 ccw, then σ_3 cw.
+"""
 function continue_along(Σ, z0, loops, N; K = 40)
     L = base_value(Σ, z0, N; K = K)
     Mtot = one_s()          # continuing L·M_prev along γ gives L·M_γ·M_prev
@@ -165,7 +187,9 @@ end
 # the algebra homomorphism x_s ↦ R_s maps L to Y, i.e. [i1,...,in] ↦ R_i1 ⋯ R_in
 # (no reversal: regular_transport already builds words as vcat(s, w)).
 
-"Weight-resolved evaluation: D[r+1] is the contribution of the words of length r."
+"""
+Weight-resolved evaluation: D[r+1] is the contribution of the words of length r.
+"""
 function evaluate_series_by_weight(S::Series, Rs, N)
     n = size(Rs[1], 1)
     D = [zeros(ComplexF64, n, n) for _ in 0:N]
@@ -187,7 +211,9 @@ end
 
 monodromy_matrices(Σ, Rs, z0, N; K = 40) = sum.(monodromy_pieces(Σ, Rs, z0, N; K = K))
 
-"Evaluate a free series in the residue matrices: [i1,...,in] ↦ R_i1 ⋯ R_in (no reversal)."
+"""
+Evaluate a free series in the residue matrices: [i1,...,in] ↦ R_i1 ⋯ R_in (no reversal).
+"""
 evaluate_series(S::Series, Rs, N) = sum(evaluate_series_by_weight(S, Rs, N))
 
 """

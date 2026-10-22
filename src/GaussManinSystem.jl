@@ -1,3 +1,6 @@
+"""
+Capture all the relevant variables of the Gauss-Manin system.
+"""
 mutable struct GaussManinSystem
 	M
 	B
@@ -10,18 +13,23 @@ mutable struct GaussManinSystem
 	n
 end
 
+"""
+Convert an integer to a Singular number.
+"""
 function toS(c::Integer)
     return Singular.QQ(c)
 end
 
+"""
+Convert a rational to a Singular number.
+"""
 function toS(c::Rational) 
     return Singular.QQ(BigInt(numerator(c)), BigInt(denominator(c)))
 end
 
-function toS(c)
-    return Singular.QQ(BigInt(numerator(c)), BigInt(denominator(c))) 
-end
-
+"""
+Convert a polynomial from AbstractPolynomials to a Singular polynomial.
+"""
 function to_singular(p::AbstractPolynomialLike; ordering = :degrevlex)
     vs = variables(p)
     R, _ = Singular.polynomial_ring(Singular.QQ, string.(vs); ordering = ordering)
@@ -32,18 +40,25 @@ function to_singular(p::AbstractPolynomialLike; ordering = :degrevlex)
     return Singular.finish(B)
 end
 
-# Singular rational number -> Julia Rational{BigInt}
+"""
+Convert a Singular rational number to a Rational{BigInt}.
+"""
 function fromS(c) 
     return Rational{BigInt}(BigInt(numerator(c)), BigInt(denominator(c)))
 end
 
-# DynamicPolynomials variables named like the Singular ring's variables, e.g. [s, x, y, z]
+"""
+DynamicPolynomials variables named like the Singular ring's variables, e.g. [s, x, y, z].
+"""
 function mp_vars(R) 
     return [DynamicPolynomials.Variable(string(v),
             DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder},
             DynamicPolynomials.Graded{DynamicPolynomials.LexOrder}) for v in Singular.gens(R)]
 end
 
+"""
+Convert a Singular polynomial to a MultivariatePolynomials polynomial.
+"""
 function from_singular(p::Singular.spoly, vars = mp_vars(parent(p)))
     length(vars) == Singular.nvars(parent(p)) ||
         error("need one variable per ring variable $(Singular.gens(parent(p)))")
@@ -53,23 +68,32 @@ function from_singular(p::Singular.spoly, vars = mp_vars(parent(p)))
                 for (c, e) in zip(Singular.coefficients(p), Singular.exponent_vectors(p))))
 end
 
-# vector of Singular polynomials, or a Singular ideal -> Vector of polynomials
+"""
+Convert vector of Singular polynomials to a vector of polynomials.
+"""
 function from_singular(ps::AbstractVector{<:Singular.spoly}, vars = mp_vars(parent(first(ps))))
     return [from_singular(p, vars) for p in ps]
 end
 
+"""
+Convert vector of Singular ideal to a vector of polynomials.
+"""
 function from_singular(I::Singular.sideal, vars = mp_vars(Singular.base_ring(I))) 
     return from_singular(Singular.gens(I), vars)
 end
 
-# x-exponent vector of the leading monomial (degrevlex) of the s = 0 part of p
+"""
+Evaluate the x-exponent vector of the leading monomial (degrevlex) of the s = 0 part of p
+"""
 function s0_leadexp(p)
     terms = [e[2:end] for e in Singular.exponent_vectors(p) if e[1] == 0]
     isempty(terms) && error("basis element $p has no s = 0 part")
     return reduce((a, b) -> degrevlex_less(a, b) ? b : a, terms)
 end
 
-# a < b in degree reverse lexicographical order
+"""
+a < b in degree reverse lexicographical order.
+"""
 function degrevlex_less(a::Vector{Int}, b::Vector{Int})
     sum(a) != sum(b) && return sum(a) < sum(b)
     for i in length(a):-1:1                 # reverse lex: last differing variable decides
@@ -78,6 +102,9 @@ function degrevlex_less(a::Vector{Int}, b::Vector{Int})
     return false
 end
 
+"""
+Sort the basis
+"""
 function reorder_basis(b, A; rev::Bool = false)
     bv = b isa Singular.sideal ? Singular.gens(b) : collect(b)
     keys = [s0_leadexp(p) for p in bv]

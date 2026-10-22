@@ -129,11 +129,15 @@ trace_contributions(Di, Dj, N) =
 
 # Matrix-valued continuation of  Y' = A(t) Y,  A(t) = Σ_s R_s/(t - σ_s),  without weight truncation.
 
-"Taylor coefficients A_m of A(a+u) = Σ_m A_m u^m, over the letters s ≠ skip."
+"""
+Taylor coefficients A_m of A(a+u) = Σ_m A_m u^m, over the letters s ≠ skip.
+"""
 taylor_A(Σ, Rs, a, K; skip = 0) =
     [sum(Rs[s] * ((-1)^m / (a - Σ[s])^(m+1)) for s in eachindex(Σ) if s != skip) for m in 0:K-1]
 
-"Propagator U(b ← a) of Y' = A Y for one step, by Taylor expansion at a (needs |b-a| < dist(a, Σ))."
+"""
+Propagator U(b ← a) of Y' = A Y for one step, by Taylor expansion at a (needs |b-a| < dist(a, Σ)).
+"""
 function matrix_step(Σ, Rs, a, b, K)
     A = taylor_A(Σ, Rs, a, K); u = b - a; n = size(Rs[1], 1)
     c = [Matrix{ComplexF64}(I, n, n)]                          # c[k+1] = coefficient of u^k (scaled)
@@ -176,7 +180,9 @@ function local_monodromy(Σ, Rs, j, p; K = 40)
     G * exp(2π * im * ComplexF64.(Rs[j])) / G
 end
 
-"Propagator U with Y(path[end]) = U Y(path[1]) along the polyline `path` (same steps as `transport`)."
+"""
+Propagator U with Y(path[end]) = U Y(path[1]) along the polyline `path` (same steps as `transport`).
+"""
 function matrix_transport(Σ, Rs, path; K = 40, ρ = 0.3)
     U = Matrix{ComplexF64}(I, size(Rs[1])...)
     for i in 1:length(path)-1
@@ -215,7 +221,9 @@ end
 # Truncation control for the hyperlogarithm back-end (keyhole notes, Sec. 9): certified bound
 # B(N) ≥ |K_N - K| for nilpotent residues (ρ = 0), and the smallest N with B(N) < 1/2.
 
-"Midpoint quadrature nodes and weights |dt| on the polyline `path`, refined near the letters Σ."
+"""
+Midpoint quadrature nodes and weights |dt| on the polyline `path`, refined near the letters Σ.
+"""
 function path_quadrature(Σ, path; per = 50)
     ts = eltype(path)[]; ws = Float64[]
     for k in 1:length(path)-1
@@ -227,18 +235,24 @@ function path_quadrature(Σ, path; per = 50)
     ts, ws
 end
 
-"‖A(t)‖ over the letters s ≠ skip: operator norm of the full sum (sharp) or sum of residue norms."
+"""
+‖A(t)‖ over the letters s ≠ skip: operator norm of the full sum (sharp) or sum of residue norms.
+"""
 A_norm(Σ, Rs, t; sharp = true, skip = 0) = sharp ?
     opnorm(sum(Rs[s] / (t - Σ[s]) for s in eachindex(Σ) if s != skip)) :
     sum(opnorm(Rs[s]) / abs(t - Σ[s]) for s in eachindex(Σ) if s != skip)
 
-"Path strength Λ_γ = ∫_γ ‖A(t)‖ |dt| (numerical quadrature)."
+"""
+Path strength Λ_γ = ∫_γ ‖A(t)‖ |dt| (numerical quadrature).
+"""
 function path_strength(Σ, Rs, path; sharp = true)
     ts, ws = path_quadrature(Σ, path)
     sum(w * A_norm(Σ, Rs, t; sharp = sharp) for (t, w) in zip(ts, ws))
 end
 
-"Local constants (α_s, λ_s) = (‖R_s‖, r_s max‖Â_s‖) of the stem from σ_s to z, Â_s = Σ_{u≠s} R_u/(t-σ_u)."
+"""
+Local constants (α_s, λ_s) = (‖R_s‖, r_s max‖Â_s‖) of the stem from σ_s to z, Â_s = Σ_{u≠s} R_u/(t-σ_u).
+"""
 function local_constants(Σ, Rs, s, z; sharp = true, npts = 200)
     r = abs(z - Σ[s])
     λ = sharp ? r * maximum(A_norm(Σ, Rs, Σ[s] + q*(z - Σ[s]); skip = s) for q in range(0, 1, npts)) :
@@ -246,10 +260,14 @@ function local_constants(Σ, Rs, s, z; sharp = true, npts = 200)
     opnorm(Rs[s]), λ
 end
 
-"Dyson tail Σ_{r>N} Λ^r/r! ≤ e^Λ Λ^{N+1}/(N+1)!."
+"""
+Dyson tail Σ_{r>N} Λ^r/r! ≤ e^Λ Λ^{N+1}/(N+1)!.
+"""
 dyson_tail(Λ, N) = exp(Λ + (N + 1) * log(Λ) - loggamma(N + 2))
 
-"Tail of the local majorant exp(λ(g + αg²)) at g = 1, by the Chernoff bound inf_{G>1} e^{λ(G+αG²)}/(G^{N+1}(1-1/G))."
+"""
+Tail of the local majorant exp(λ(g + αg²)) at g = 1, by the Chernoff bound inf_{G>1} e^{λ(G+αG²)}/(G^{N+1}(1-1/G)).
+"""
 local_tail(α, λ, N) =
     minimum(exp(λ*(G + α*G^2) - (N + 1)*log(G)) / (1 - 1/G) for G in exp.(range(log(1.001), log(1e4), 4000)))
 
@@ -283,7 +301,9 @@ function truncation_bound(Σ, Rs, i, j; K = 40, npts = 12, paths = keyhole_paths
     B
 end
 
-"Largest weight N whose words (Σ_{r≤N} n^r for n letters) fit in `max_words`."
+"""
+Largest weight N whose words (Σ_{r≤N} n^r for n letters) fit in `max_words`.
+"""
 max_weight(n, max_words) = (N = 0; while sum(float(n)^r for r in 0:N+1) <= max_words; N += 1; end; N)
 
 "Smallest N ≤ Nmax with certified |K_N - K_{j←i}| < 1/2 (see `truncation_bound`), or `nothing`."
