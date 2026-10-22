@@ -31,17 +31,18 @@ function morse_normalisation(H; atol = 1e-8)
 end
 
 """
-    saddle_series(f, GM, M; saddles = nothing)
+    transseries(f, GM, M; saddles = nothing, component = 1)
 
-Asymptotic series of every saddle point to order M, ordered as `GM.λs` and normalised such that
-the leading coefficient of the first component (Ψ itself) is T0 = 1/√det H, with the branch fixed
-by `morse_normalisation` (principal branch for complex critical points, Morse convention for real
-ones, so that real critical points enter with n = +1).
-Returns a vector of named tuples `(λ, t, μ, x, T0, T)` with t = -iλ the Borel singularity,
-x the critical point and T the (components × orders) coefficient matrix; T[1, :] is the series of Ψ.
-Pass the same `T0` to `stokes_constants` and `relevance`.
+Asymptotic series of every saddle point to order M, ordered as `GM.λs`, as a vector of
+`Expansion`s `(x, f₀, μ, Ts)`: the critical point x, the Borel singularity f₀ = t = -iλ, the
+exponent μ and the coefficients `Ts` of the series of the basis element `component` of the
+Gauss-Manin system (1 = Ψ itself). The series are normalised such that the leading coefficient of
+the first component is T0 = 1/√det H, with the branch fixed by `morse_normalisation` (principal
+branch for complex critical points, Morse convention for real ones, so that real critical points
+enter with n = +1). For `component = 1`, T0 = `Ts[1]`: pass the same T0 to `stokes_constants` and
+`relevance`. The critical points are found with `findAllSaddles` unless `saddles` is given.
 """
-function saddle_series(f, GM, M; saddles = nothing)
+function transseries(f, GM, M; saddles = nothing, component = 1)
     vars = variables(f)
     xs = saddles === nothing ? [refineSaddle(f, s)[1] for s in findAllSaddles(f)] : saddles
     Hpoly = differentiate(differentiate(f, vars), vars)
@@ -52,7 +53,7 @@ function saddle_series(f, GM, M; saddles = nothing)
         isreal_point = maximum(abs ∘ imag, xs[a]) < 1e-8 * max(1, maximum(abs, xs[a]))
         H = [h(vars => (isreal_point ? real.(xs[a]) : xs[a])) for h in Hpoly]
         T0 = morse_normalisation(H)
-        (λ = λ, t = -im * λ, μ = μ, x = xs[a], T0 = T0, T = T0 .* Ts)
+        Expansion(xs[a], -im * λ, μ, T0 .* Ts[component, :])
     end
 end
 
@@ -97,11 +98,19 @@ function truncation_order(T, F, k, truncation)
     error("superasymptotic: unknown truncation $truncation")
 end
 
-"""
-    superasymptotic(series, n, Σ, K, k; component = 1, truncation = :singulant)
+# Critical value λ and coefficients of an expansion: an `Expansion` (f₀ = -iλ) or a named tuple
+# `(λ, μ, T)`, with T a coefficient vector or a (components × orders) matrix.
+_critical_value(s::Expansion) = im * s.f₀
+_critical_value(s) = s.λ
+_coefficients(s::Expansion, component) = s.Ts isa AbstractMatrix ? s.Ts[component, :] : s.Ts
+_coefficients(s, component) = s.T isa AbstractMatrix ? s.T[component, :] : s.T
 
-Superasymptotic approximation Σ_j n_j e^{ikλ_j} (ik)^{μ_j} Σ_{m<N_j} T_m^(j)/k^m of component
-`component` (1 = Ψ) of the moments, with `series` from `saddle_series`, intersection numbers n
+"""
+    superasymptotic(transseries, n, Σ, K, k; component = 1, truncation = :singulant)
+
+Superasymptotic approximation Σ_j n_j e^{ikλ_j} (ik)^{μ_j} Σ_{m<N_j} T_m^(j)/k^m, with the
+`Expansion`s `transseries` from `transseries` (a named tuple `(λ, μ, T)` per saddle point is
+accepted as well; `component` selects a row when T is a matrix), intersection numbers n
 (from `relevance`), Borel singularities Σ and Stokes constants K (`stokes_constants` convention,
 only adjacency K[l, j] ≠ 0 is used).
 
@@ -112,19 +121,19 @@ Returns `(value, N, error, terms)`: the approximation, the truncation orders, th
 omitted terms Σ_j |n_j e^{ikλ_j} T_{N_j}/k^{N_j}| as an error estimate, and the contribution of every
 saddle point.
 """
-function superasymptotic(series, n, Σ, K, k; component = 1, truncation = :singulant)
+function superasymptotic(transseries, n, Σ, K, k; component = 1, truncation = :singulant)
     F = singulants(Σ, K)
-    N = zeros(Int, length(series))
-    terms = Vector{Any}(undef, length(series))
+    N = zeros(Int, length(transseries))
+    terms = Vector{Any}(undef, length(transseries))
     err = 0.0
-    for (j, s) in enumerate(series)
-        T = s.T isa AbstractMatrix ? s.T[component, :] : s.T
+    for (j, s) in enumerate(transseries)
+        T = _coefficients(s, component)
         if n[j] == 0
             terms[j] = zero(complex(float(k)))
             continue
         end
         N[j] = truncation_order(T, F[j], k, truncation)
-        pref = n[j] * exp(im * k * s.λ) * (im * k)^s.μ
+        pref = n[j] * exp(im * k * _critical_value(s)) * (im * k)^s.μ
         terms[j] = pref * sum(T[m+1] / k^m for m in 0:N[j]-1)
         N[j] < length(T) && (err += Float64(abs(pref * T[N[j]+1] / k^N[j])))
     end

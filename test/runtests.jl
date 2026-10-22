@@ -106,6 +106,11 @@ Kpaper = [ 0  0 -1  2 -1;
     Kref = zeros(Int, 5, 5); Kref[p, p] = -Kpaper    # expected package Stokes constants, GM.λs order
 
     @testset "asymptotic series" begin
+        # transseries of the lifted integral (component 1), ordered as GM.λs
+        trans = transseries(f, GM, 20; saddles = saddles)
+        @test trans isa Vector{Expansion} && length(trans) == 5
+        @test all(abs(ComplexF64(trans[j].f₀ + im * GM.λs[j])) < 1e-30 for j in 1:5)
+        @test all(length(s.Ts) == 21 for s in trans)
         @test all(abs(s.μ) < 1e-30 for s in lens)
         @test all(length(s.T) == M + 1 for s in lens)
         # the late terms diverge at the rate of the nearest adjacent Borel singularity
@@ -117,19 +122,19 @@ Kpaper = [ 0  0 -1  2 -1;
     # ---------------------------------------------------------------- Borel-Padé adjacency
     progress("Borel-Padé poles and Stokes constants")
     @testset "Borel-Padé" begin
-        transseries = map(1:GM.n) do j
+        bp_trans = map(1:GM.n) do j
             λ, μ, Ts = asymptotic(j, GM, 100)
             index = argmin(abs.(u .- λ))
             Expansion(saddles[index], -im * λ, μ, sqrt(big(im)) .* T0s[index] .* Ts[1, :])
         end
-        poles = [findPoles(trans) for trans in transseries]
+        poles = [findPoles(s) for s in bp_trans]
         @test all(length(poles[j]) == 49 for j in 1:5)
-        K_bp = round.(Int, real.(findStokesConstants(transseries)))
+        K_bp = round.(Int, real.(findStokesConstants(bp_trans)))
         # the detected edges belong to the adjacency graph of the Fuchsian system
         # (findStokesConstants is transposed with respect to stokes_constants)
         @test count(!iszero, K_bp) >= 4
         @test all((K_bp .!= 0) .<= transpose(Kref .!= 0))
-        @test plotAdjacencyPoles(transseries, K_bp, poles) isa Tuple
+        @test plotAdjacencyPoles(bp_trans, K_bp, poles) isa Tuple
     end
 
     # ---------------------------------------------------------------- Stokes constants
@@ -161,17 +166,16 @@ Kpaper = [ 0  0 -1  2 -1;
     # ---------------------------------------------------------------- approximations
     progress("approximations of the integral")
     expansions = [Expansion(s.x, -im * s.λ, s.μ, s.T) for s in lens]
-    series = [(λ = ComplexF64(s.λ), μ = 0.0, T = ComplexF64.(s.T)) for s in lens]
     borel_pade(k) = sum(n[j] * exp(im * k * ComplexF64(lens[j].λ)) *
                         ComplexF64(BorelPadeResum(expansions[j], k)[1]) for j in 1:5 if n[j] != 0)
 
     @testset "approximations, k = $k" for k in (4.0, 8.0)
         progress("  k = $k: exact integral, Borel-Padé, superasymptotic and hyperasymptotic (levels 1, 2)")
         Ψ   = exact(k)
-        sup = superasymptotic(series, n, Σ, K, k)
+        sup = superasymptotic(expansions, n, Σ, K, k)
         eSA = abs(Ψ - sup.value)
-        eH1 = abs(Ψ - hyperasymptotic(series, n, Σ, K, k; level = 1).value)
-        eH2 = abs(Ψ - hyperasymptotic(series, n, Σ, K, k; level = 2).value)
+        eH1 = abs(Ψ - hyperasymptotic(expansions, n, Σ, K, k; level = 1).value)
+        eH2 = abs(Ψ - hyperasymptotic(expansions, n, Σ, K, k; level = 2).value)
         @test abs(Ψ - borel_pade(k)) < 1e-10
         @test eSA < 10 * sup.error
         @test eH1 < eSA / 5

@@ -2,8 +2,9 @@
     Expansion(x, f₀, μ, Ts)
 
 Asymptotic expansion of a saddle point `x`: the exponent f₀ (Borel singularity), the exponent μ of
-the prefactor and the coefficients `Ts`, as used by the Borel-Padé functions (`findPoles`,
-`findStokesConstants`, `BorelPadeResum`).
+the prefactor and the coefficients `Ts`. Returned by `transseries`, and used by the Borel-Padé
+functions (`findPoles`, `findStokesConstants`, `BorelPadeResum`) and by `superasymptotic` and
+`hyperasymptotic`.
 """
 mutable struct Expansion
     x

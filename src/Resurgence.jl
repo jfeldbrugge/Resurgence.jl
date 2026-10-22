@@ -29,7 +29,7 @@ module Resurgence
     export southeast, relevance
 
     # Asymptotics of the integral
-    export saddle_series, singulants, divergence_rate, superasymptotic
+    export transseries, singulants, divergence_rate, superasymptotic
     export hyperterminant, hyperasymptotic, path_lengths
 
     # Plots

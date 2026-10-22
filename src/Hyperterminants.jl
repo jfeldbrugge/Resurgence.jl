@@ -162,17 +162,19 @@ function _edge_integral(R, F, w, N, Nl, δ; rtol = 1e-10)
 end
 
 """
-    hyperasymptotic(series, n, Σ, K, k; level = 1, component = 1, N = nothing,
+    hyperasymptotic(transseries, n, Σ, K, k; level = 1, component = 1, N = nothing,
                     truncation = :daalhuis, rtol = 1e-10)
 
-Hyperasymptotic approximation of component `component` (1 = Ψ) of the moments,
+Hyperasymptotic approximation of the integral,
 
     Σ_j n_j e^{ikλ_j} (ik)^{μ_j} [ Σ_{m<N_j} T_m^(j)/k^m + R_{N_j}^(j)(k) ],
 
 with the remainders re-expanded `level` times in terms of the series of the adjacent saddle points
-(`level = 0` is the superasymptotic approximation). `series` comes from `saddle_series`, `n` from
+(`level = 0` is the superasymptotic approximation). `transseries` is the vector of `Expansion`s from
+`transseries` (a named tuple `(λ, μ, T)` per saddle point is accepted as well; `component` selects a
+row when T is a matrix), `n` from
 `relevance`, Σ are the Borel singularities and K the Stokes constants of `stokes_constants` (package
-convention K[l, j] = K_{l←j}, computed with the normalisation of `series`).
+convention K[l, j] = K_{l←j}, computed with the normalisation of `transseries`).
 
 Truncation (`truncation = :daalhuis`, the default): the series of saddle j is truncated at
 N_j = ⌈α_j^(level) |k|⌉, with α_j^(level) the shortest path of level + 1 steps from t_j in the adjacency
@@ -184,14 +186,15 @@ Level one is evaluated in closed form; level L nests L - 1 quadratures, so level
 expensive. The relation used assumes μ_j = 0 (non-degenerate saddle points in the normalisation of the
 package). Returns `(value, N, terms)` with `terms[j]` the contribution of saddle j.
 """
-function hyperasymptotic(series, n, Σ, K, k; level = 1, component = 1, N = nothing,
+function hyperasymptotic(transseries, n, Σ, K, k; level = 1, component = 1, N = nothing,
                          truncation = :daalhuis, rtol = 1e-10)
+    series = transseries
     level >= 0 || error("hyperasymptotic: level must be non-negative")
     all(abs(s.μ) < 1e-8 for s in series) ||
         error("hyperasymptotic: the resurgence relation is implemented for μ_j = 0 only")
     Kint = round.(Int, real.(K))
     maximum(abs.(K .- Kint)) < 1e-6 || @warn "hyperasymptotic: the Stokes constants are not integers"
-    Ts = [ComplexF64.(s.T isa AbstractMatrix ? s.T[component, :] : s.T) for s in series]
+    Ts = [ComplexF64.(_coefficients(s, component)) for s in series]
     d = HyperData(ComplexF64.(Σ), Ts, Kint)
     α = truncation == :daalhuis ? path_lengths(Σ, Kint, level + 1) :
         truncation == :uniform  ? (level + 1) .* singulants(Σ, Kint) :
@@ -211,7 +214,7 @@ function hyperasymptotic(series, n, Σ, K, k; level = 1, component = 1, N = noth
         Ns[j] = Nj
         S = sum((Ts[j][m+1] / k^m for m in 0:Nj-1); init = zero(ComplexF64))
         S += _remainder(d, j, complex(float(k)), Nj, level, abs(k); rtol = rtol)
-        terms[j] = n[j] * exp(im * k * ComplexF64(s.λ)) * (im * k)^ComplexF64(s.μ) * S
+        terms[j] = n[j] * exp(im * k * ComplexF64(_critical_value(s))) * (im * k)^ComplexF64(s.μ) * S
     end
     (value = sum(terms), N = Ns, terms = terms)
 end

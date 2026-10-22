@@ -4,10 +4,6 @@
 [![Build Status](https://github.com/jfeldbrugge/Resurgence.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfeldbrugge/Resurgence.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/jfeldbrugge/Resurgence.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/jfeldbrugge/Resurgence.jl)
 
-<figure>
-<a href='docs/src/assets/figures/stokes_graph.png'><img src='docs/src/assets/figures/stokes_graph.png' width=100% /></a>
-</figure>
-
 Multidimensional oscillatory integrals
 
 $$\Psi(k) = \left(\frac{k}{2\pi i}\right)^{d/2} \int_{\mathbb{R}^d} e^{i k f(\boldsymbol{x})}\, \mathrm{d}\boldsymbol{x}$$
@@ -30,7 +26,7 @@ julia> using Pkg; Pkg.add(url = "https://github.com/jfeldbrugge/Resurgence.jl")
 ```
 
 ## Usage
-For the Pearcey integral with exponent $f(q) = q^4 + q^2/2 + q$, we compute the asymptotic series and the Stokes constants of the saddle points, determine the relevant saddle points with the South-East rule and approximate the integral $\Psi(k)$ at $k = 6$ (exact value $-0.1148611 - 0.4893380i$) as follows:
+For the Pearcey integral with exponent $f(q) = q^4 + q^2/2 + q$, we compute the asymptotic series and the Stokes constants of the saddle points, determine the relevant saddle points with the South-East rule and approximate the integral $\Psi(k)$ at $k = 6$ (exact value $\Psi(6) = -0.1148611265675526 - 0.4893380385050138i$) as follows:
 
 ```julia
 using Resurgence, DynamicPolynomials
@@ -38,11 +34,15 @@ using Resurgence, DynamicPolynomials
 @polyvar q
 f = q^4 + 1//2 * q^2 + q
 
-# Gauss-Manin system and the asymptotic series of all saddle points to order 60
-GM     = GaussManin(f)
-series = saddle_series(f, GM, 60)
-Σ  = ComplexF64[s.t  for s in series]          # Borel singularities t = -iλ
-T0 = ComplexF64[s.T0 for s in series]          # normalisation of the series
+# Saddle points: the roots of f'(q) = 4q³ + q + 1
+s7 = sqrt(big(7))
+saddles = [[complex(-big(1)/2)], [(1 - s7 * im)/4], [(1 + s7 * im)/4]]
+
+# Gauss-Manin system and the transseries: the asymptotic series of all saddle points to order 60
+GM    = GaussManin(f)
+trans = transseries(f, GM, 60; saddles = saddles)
+Σ  = ComplexF64[s.f₀    for s in trans]        # Borel singularities t = -iλ
+T0 = ComplexF64[s.Ts[1] for s in trans]        # normalisation of the series
 Rs = [ComplexF64.(R) for R in GM.Rs]           # residues of the Fuchsian system
 
 # Adjacency: Stokes constants K[l, j] = K_{l←j}
@@ -50,13 +50,19 @@ K = stokes_constants(Σ, Rs, 0; T0 = T0, method = :matrix)
 fig, ax = plotStokesGraphGM(Σ, K)
 
 # Relevance: intersection numbers from the South-East rule
-n = relevance(f, Σ, K, T0).n
+n = relevance(f, Σ, K, T0; saddles = saddles).n
 
 # Superasymptotic and hyperasymptotic approximations of Ψ(k)
 k = 6.0
-superasymptotic(series, n, Σ, K, k).value                 # -0.11331 - 0.48913im
-hyperasymptotic(series, n, Σ, K, k; level = 1).value      # -0.114860 - 0.489336im
+superasymptotic(trans, n, Σ, K, k).value                 # -0.11331 - 0.48913im
+hyperasymptotic(trans, n, Σ, K, k; level = 1).value      # -0.114860 - 0.489336im
 ```
+
+The adjacency graph of the Pearcey integral, drawn with `plotStokesGraphGM`, shows the three Borel singularities $t_j = -i\lambda_j$ of the saddle points in the Borel plane. Every pair of saddle points is adjacent, and each edge is labelled by its Stokes constant.
+
+<figure>
+<a href='docs/src/assets/figures/stokes_graph.png'><img src='docs/src/assets/figures/stokes_graph.png' width=100% /></a>
+</figure>
 
 Please have a look at the docstrings (e.g. `?stokes_constants`) for more details. The documentation is under development.
 
