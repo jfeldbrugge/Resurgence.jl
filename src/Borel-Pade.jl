@@ -6,7 +6,10 @@ function BorelTransform(Ts, α)
 end
 
 """
-Find poles
+    findPoles(trans)
+
+Poles of the diagonal Padé approximant of the Borel transform of `trans.Ts` (an `Expansion`),
+relative to the Borel singularity `trans.f₀`.
 """
 function findPoles(trans)
     order = length(trans.Ts) ÷ 2 - 1
@@ -16,7 +19,7 @@ function findPoles(trans)
     return poles
 end
 
-""" 
+"""
 Find the Stokes constants
 """
 function findStokesConstants(transseries, ϵ = 1e-2)
@@ -25,16 +28,16 @@ function findStokesConstants(transseries, ϵ = 1e-2)
         if j ≠ k
             trans_j, trans_k = transseries[j], transseries[k]
             Fⱼₖ = -(trans_j.f₀ - trans_k.f₀)
-        
+
             borelTransform = BorelTransform(trans_j.Ts, big"0.5")
             Φt = Polynomials.Polynomial(borelTransform)
             # t=Fⱼₖ-Fⱼₖ(s-1)^2
             Φs = Φt(Polynomials.Polynomial([0, 2Fⱼₖ, -Fⱼₖ]))
-        
+
             order = length(trans_j.Ts) ÷ 2 - 1
             num, den = TaylorToPade(Polynomials.coeffs(Φs), order, order)
             pole = argmin(p -> abs(p - 1), Polynomials.roots(Polynomials.Polynomial(den)))
-        
+
             if abs(pole - 1) < ϵ
                 p = Polynomials.Polynomial(num)
                 q = Polynomials.Polynomial(den)
@@ -47,16 +50,18 @@ function findStokesConstants(transseries, ϵ = 1e-2)
 end
 
 """
-Evaluate the adjacency without Stokes constants
+    evaluateAdjacency(transseries, ϵ = 0.1)
+
+Adjacency matrix (0/1) from the Padé poles of the Borel transforms, without Stokes constants.
 """
 function evaluateAdjacency(transseries, ϵ = 0.1)
     K = zeros(Int, (length(transseries), length(transseries)))
-    
+
     f0s = [trans.f₀ for trans in transseries]
-    
+
     poles = [findPoles(trans) for trans in transseries]
     for i in eachindex(transseries), j in eachindex(transseries)
-        if i ≠ j 
+        if i ≠ j
             for pole in poles[i]
                 if abs(pole .+ f0s[i] - f0s[j]) / abs(f0s[i] - f0s[j]) < ϵ
                     K[i, j] = 1
@@ -65,7 +70,7 @@ function evaluateAdjacency(transseries, ϵ = 0.1)
 
         end
     end
-    
+
     return K
 end
 

@@ -194,7 +194,7 @@ function evaluate_series_by_weight(S::Series, Rs, N)
     n = size(Rs[1], 1)
     D = [zeros(ComplexF64, n, n) for _ in 0:N]
     for (w, c) in S
-        length(w) <= N && (D[length(w)+1] .+= c .* 
+        length(w) <= N && (D[length(w)+1] .+= c .*
         prod((Rs[a] for a in w); init = Matrix{ComplexF64}(I, size(Rs[1])...)))
     end
     D

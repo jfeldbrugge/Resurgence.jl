@@ -2,15 +2,15 @@
 Capture all the relevant variables of the Gauss-Manin system.
 """
 mutable struct GaussManinSystem
-	M
-	B
-	vars
-	ϕ
-	λs
-	V
-	Rs
-	Πs
-	n
+    M
+    B
+    vars
+    ϕ
+    λs
+    V
+    Rs
+    Πs
+    n
 end
 
 """
@@ -23,7 +23,7 @@ end
 """
 Convert a rational to a Singular number.
 """
-function toS(c::Rational) 
+function toS(c::Rational)
     return Singular.QQ(BigInt(numerator(c)), BigInt(denominator(c)))
 end
 
@@ -43,14 +43,14 @@ end
 """
 Convert a Singular rational number to a Rational{BigInt}.
 """
-function fromS(c) 
+function fromS(c)
     return Rational{BigInt}(BigInt(numerator(c)), BigInt(denominator(c)))
 end
 
 """
 DynamicPolynomials variables named like the Singular ring's variables, e.g. [s, x, y, z].
 """
-function mp_vars(R) 
+function mp_vars(R)
     return [DynamicPolynomials.Variable(string(v),
             DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder},
             DynamicPolynomials.Graded{DynamicPolynomials.LexOrder}) for v in Singular.gens(R)]
@@ -78,7 +78,7 @@ end
 """
 Convert vector of Singular ideal to a vector of polynomials.
 """
-function from_singular(I::Singular.sideal, vars = mp_vars(Singular.base_ring(I))) 
+function from_singular(I::Singular.sideal, vars = mp_vars(Singular.base_ring(I)))
     return from_singular(Singular.gens(I), vars)
 end
 
@@ -103,7 +103,7 @@ function degrevlex_less(a::Vector{Int}, b::Vector{Int})
 end
 
 """
-Sort the basis
+Sort the basis by the leading monomial of its s = 0 part (degrevlex) and permute A accordingly.
 """
 function reorder_basis(b, A; rev::Bool = false)
     bv = b isa Singular.sideal ? Singular.gens(b) : collect(b)
@@ -116,56 +116,60 @@ function reorder_basis(b, A; rev::Bool = false)
 end
 
 """
-Build the Gauss-Manin system.
+    GaussManin(f)
+
+Gauss-Manin system of the tame polynomial `f` (Singular's `gmspoly.lib`): the matrices M and B of
+the connection in a good basis of the Brieskorn lattice, the critical values λs (eigenvalues of M),
+the eigenvectors V, the spectral projectors Πs and the residues Rs of the Borel-plane Fuchsian system.
 """
 function GaussManin(f)
-	vars = variables(f)
-	dim = length(vars)
-	
-	f_singular = to_singular(f)
-	
-	@assert Singular.LibGmspoly.isTame(f_singular) == 1 "Polynomial is not tame." 
+    vars = variables(f)
+    dim = length(vars)
 
-	Rs, objs = Singular.LibGmspoly.goodBasis(f_singular)
-	b = Singular.gens(objs[:b]) # good basis of the Brieskorn lattice
-	A = objs[:A] # matrix of t with respect to b:  t = A + s^2*d/ds
+    f_singular = to_singular(f)
 
-	b, A, perm = reorder_basis(b, A)
-	
-	n = Singular.nrows(A)
-	s = Singular.gen(Rs, 1) 
+    @assert Singular.LibGmspoly.isTame(f_singular) == 1 "Polynomial is not tame."
 
-	# Singular's jet(p,0): the constant term of p.
-	jet0(p) = iszero(p) ? p : Rs(Singular.constant_coefficient(p))
+    Rs, objs = Singular.LibGmspoly.goodBasis(f_singular)
+    b = Singular.gens(objs[:b]) # good basis of the Brieskorn lattice
+    A = objs[:A] # matrix of t with respect to b:  t = A + s^2*d/ds
 
-	# Singular's p/var(1): divide termwise by s, dropping terms not divisible by s.
-	function divs(p)
-	    B = Singular.MPolyBuildCtx(Rs)
-	    for (c, e) in zip(Singular.coefficients(p), Singular.exponent_vectors(p))
-	        e[1] >= 1 || continue
-	        e[1] -= 1
-	        Singular.push_term!(B, c, e)
-	    end
-	    return Singular.finish(B)
-	end
+    b, A, perm = reorder_basis(b, A)
 
-	A0 = [jet0(A[i, j]) for i in 1:n, j in 1:n]          # jet(A,0)
-	A1 = [jet0(divs(A[i, j])) for i in 1:n, j in 1:n]    # jet(A/var(1),0)
+    n = Singular.nrows(A)
+    s = Singular.gen(Rs, 1)
 
-	toQ(p) = iszero(p) ? zero(Rational{BigInt}) : Rational{BigInt}(Singular.constant_coefficient(p))
-	
-	M = collect(transpose(toQ.(A0)))
-	B = collect(transpose(toQ.(A1)))
+    # Singular's jet(p,0): the constant term of p.
+    jet0(p) = iszero(p) ? p : Rs(Singular.constant_coefficient(p))
 
-	# Project B - (d/2) I onto the partial fraction matrices Rⱼ: the Borel transform of k^(d/2-1) ∫ ϕ e^{ikf},
-	# for which every Rⱼ is nilpotent (tr Rⱼ = 0), the optimal choice for the hyperlogarithm expansion
-	M_eigen = eigen(Complex{BigFloat}.(M))
-	λs = Complex{BigFloat}.(M_eigen.values)
-	V  = Complex{BigFloat}.(M_eigen.vectors)
+    # Singular's p/var(1): divide termwise by s, dropping terms not divisible by s.
+    function divs(p)
+        B = Singular.MPolyBuildCtx(Rs)
+        for (c, e) in zip(Singular.coefficients(p), Singular.exponent_vectors(p))
+            e[1] >= 1 || continue
+            e[1] -= 1
+            Singular.push_term!(B, c, e)
+        end
+        return Singular.finish(B)
+    end
 
-	Πs = [prod((M - λs[i] * I) / (λs[j] - λs[i]) for i in eachindex(λs) if i ≠ j) for j in eachindex(λs)]
-	Rs = [Π * (B - dim//2 * I) for Π in Πs]
+    A0 = [jet0(A[i, j]) for i in 1:n, j in 1:n]          # jet(A,0)
+    A1 = [jet0(divs(A[i, j])) for i in 1:n, j in 1:n]    # jet(A/var(1),0)
 
-	GM = GaussManinSystem(M, B, vars, from_singular(b), λs, V, Rs, Πs, n)
-	return GM
+    toQ(p) = iszero(p) ? zero(Rational{BigInt}) : Rational{BigInt}(Singular.constant_coefficient(p))
+
+    M = collect(transpose(toQ.(A0)))
+    B = collect(transpose(toQ.(A1)))
+
+    # Project B - (d/2) I onto the partial fraction matrices Rⱼ: the Borel transform of k^(d/2-1) ∫ ϕ e^{ikf},
+    # for which every Rⱼ is nilpotent (tr Rⱼ = 0), the optimal choice for the hyperlogarithm expansion
+    M_eigen = eigen(Complex{BigFloat}.(M))
+    λs = Complex{BigFloat}.(M_eigen.values)
+    V  = Complex{BigFloat}.(M_eigen.vectors)
+
+    Πs = [prod((M - λs[i] * I) / (λs[j] - λs[i]) for i in eachindex(λs) if i ≠ j) for j in eachindex(λs)]
+    Rs = [Π * (B - dim//2 * I) for Π in Πs]
+
+    GM = GaussManinSystem(M, B, vars, from_singular(b), λs, V, Rs, Πs, n)
+    return GM
 end

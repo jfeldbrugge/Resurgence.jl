@@ -44,7 +44,7 @@ function TaylorToPade(a::AbstractVector, m::Int, n::Int)
 end
 
 """
-    poly_eval(c, x)
+    polyEvaluate(c, x)
 
 Evaluate polynomial with coefficients in increasing order.
 """
@@ -57,10 +57,10 @@ function polyEvaluate(c, x)
 end
 
 """
-    pade_eval(num, den, x)
+    PadeEvaluate(num, den, x)
 
 Evaluate the rational approximant.
 """
-function PadeEvaluate(num, den, x) 
+function PadeEvaluate(num, den, x)
     return polyEvaluate(num, x) / polyEvaluate(den, x)
 end

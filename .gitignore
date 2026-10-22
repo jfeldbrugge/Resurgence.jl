@@ -4,5 +4,11 @@
 /Manifest*.toml
 /docs/Manifest*.toml
 /docs/build/
-# develop
+# develop: generated environments, results and logs
 develop/keyhole_notes
+develop/Manifest.toml
+develop/*.jls
+develop/*.log
+develop/*.dat
+/test/Manifest.toml
+.DS_Store
