@@ -60,9 +60,9 @@ hyperasymptotic(trans, n, Σ, K, k; level = 1).value      # -0.114860 - 0.489336
 
 The adjacency graph of the Pearcey integral, drawn with `plotStokesGraphGM`, shows the three Borel singularities $t_j = -i\lambda_j$ of the saddle points in the Borel plane. Every pair of saddle points is adjacent, and each edge is labelled by its Stokes constant.
 
-<figure>
+<p align="center">
 <a href='docs/src/assets/figures/stokes_graph.png'><img src='docs/src/assets/figures/stokes_graph.png' width=50% /></a>
-</figure>
+</p>
 
 Please have a look at the docstrings (e.g. `?stokes_constants`) for more details. The documentation is under development.
 
