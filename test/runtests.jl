@@ -7,9 +7,10 @@ using Test
 #     Ψ(k) = √(k/2πi) ∫ exp(ik f(x)) dx,    f(x) = (x - y)²/2 + β/(1 + x²),
 #
 # in its polynomial lift f(x₁, x₂, x₃) = P(x₁) x₂ + x₃ (x₂ Q(x₁) - 1), with P = 2β + (1 + x₁²)(x₁ - y)²
-# and Q = 2(1 + x₁²) (Crew & Feldbrugge, Sec. "The Lorentzian lens"). The test follows
-# develop/Lens_test.jl: saddle points, Gauss-Manin system, Borel-Padé, Stokes constants, South-East
-# rule and the Borel-Padé, superasymptotic and hyperasymptotic approximations of the integral.
+# and Q = 2(1 + x₁²), the example of Sec. VII B (The Lorentzian lens) of Crew & Feldbrugge, "Asymptotic
+# evaluation of multidimensional oscillatory integrals", arXiv:2610.22767. The test covers the saddle
+# points, the Gauss-Manin system, Borel-Padé, the Stokes constants, the South-East rule and the
+# Borel-Padé, superasymptotic and hyperasymptotic approximations of the integral.
 
 setprecision(BigFloat, 512)
 
@@ -73,14 +74,14 @@ Kpaper = [ 0  0 -1  2 -1;
 
     @testset "Gauss-Manin system" begin
         @test GM.n == 5
-        # the matrices of the Gauss-Manin system in the good basis of the paper (Sec. "The Lorentzian lens"),
+        # the matrices of the Gauss-Manin system in the good basis of the paper (Sec. VII B),
         # ϕ = (1, x₁, -1/2 + 2x₂, 2x₃ + 4x₂ - 2x₁, 4x₁x₂)
         @test GM.M == Rational{BigInt}[ 1//2  -1   1    -1//2   0;
                                         1      0   0     1//2   1;
                                         5//4   1   1//2  3//4  -1//2;
                                        -3//2   0   1     0      1//2;
                                        -2      2   2     0      0]
-        @test GM.B == Diagonal(Rational{BigInt}[1, 1, 2, 3//2, 2])     # paper, Sec. "The Lorentzian lens"
+        @test GM.B == Diagonal(Rational{BigInt}[1, 1, 2, 3//2, 2])     # paper, Sec. VII B
         # the eigenvalues of M are the critical values
         @test abs(ComplexF64(tr(GM.M) - sum(u))) < 1e-30
         @test all(minimum(abs.(u .- λ)) < 1e-30 for λ in GM.λs)

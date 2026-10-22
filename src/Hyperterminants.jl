@@ -23,8 +23,9 @@
 # saddle j is truncated at N_j = α_j^(L) |k|, with α_j^(L) the length of the shortest path of L + 1
 # steps from t_j in the adjacency graph, and a re-expanded series at N_child = N_parent - |k F_edge|.
 # In the Laplace representation of the hyperterminants (Lemma 1 of Hyperterminants II), the Borel
-# functions are hyperlogarithms with letters at the cumulative singulants for integer M; see
-# develop/Hyperterminant_check.jl.
+# functions are hyperlogarithms with letters at the cumulative singulants for integer M; see Sec. VI C
+# (Hyperasymptotics) of Crew & Feldbrugge, "Asymptotic evaluation of multidimensional oscillatory
+# integrals", arXiv:2610.22767.
 
 """
     hyperterminant(M, w; method = :closed, rtol = 1e-10)
