@@ -3,6 +3,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jfeldbrugge.github.io/Resurgence.jl/dev/)
 [![Build Status](https://github.com/jfeldbrugge/Resurgence.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfeldbrugge/Resurgence.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/jfeldbrugge/Resurgence.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/jfeldbrugge/Resurgence.jl)
+[![DOI](https://zenodo.org/badge/1392666884.svg)](https://doi.org/10.5281/zenodo.23557502)
 
 Multidimensional oscillatory integrals
 
@@ -81,5 +82,14 @@ When using this code in work, please cite
     eprint = {2610.22767},
     archivePrefix = {arXiv},
     url = {https://arxiv.org/abs/2610.22767},
+}
+
+@misc{Feldbrugge2026,
+  author = {Feldbrugge, Job},
+  title = {Resurgence.jl -- Julia implementation of Resurgence for integrals},
+  year = {2026},
+  month = {oct},
+  doi = {10.5281/zenodo.23557502},
+  url = {https://doi.org/10.5281/zenodo.23557502}
 }
 ```
