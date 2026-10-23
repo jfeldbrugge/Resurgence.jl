@@ -52,7 +52,7 @@ satisfy, for a *good basis* in the sense of Saito, the Gauss–Manin system (Sec
 \frac{\mathrm{d}\boldsymbol{I}^{(j)}}{\mathrm{d}k} = \left[i M + \frac{1}{k}\left(\frac{d}{2} I - B\right)\right] \boldsymbol{I}^{(j)}.
 ```
 
-The first component $I_1^{(j)} = \Psi^{(j)}$ is the thimble integral itself. The matrix $M$ represents multiplication by $f$, and its eigenvalues are the critical values $\lambda_j$. [`GaussManin`](@ref) computes the good basis `GM.ϕ` and the matrices `GM.M` and `GM.B` with the `gmspoly.lib` library of Singular, via [Singular.jl](https://github.com/oscar-system/Singular.jl).
+The first component $I_1^{(j)} = \Psi^{(j)}$ is the thimble integral itself. The matrix $M$ represents multiplication by $f$, and its eigenvalues are the critical values $\lambda_j$. [`GaussManin`](@ref) computes the good basis `GM.ϕ` and the matrices `GM.M` and `GM.B` with the `gmspoly.lib` library of Singular, run by the Singular executable from `Singular_jll`. The library is patched to keep resonant terms (equal spectral numbers) in the connection matrix instead of dividing by zero.
 
 ## Asymptotic series
 

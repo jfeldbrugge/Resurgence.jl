@@ -2,7 +2,7 @@ module Resurgence
 
     using DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, GenericSchur, HomotopyContinuation,
         SpecialFunctions, QuadGK, CairoMakie
-    import Singular, Polynomials
+    import Singular_jll, Polynomials
 
     include("Saddles.jl")
     include("GaussManinSystem.jl")

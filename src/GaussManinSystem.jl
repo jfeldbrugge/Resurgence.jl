@@ -13,80 +13,139 @@ mutable struct GaussManinSystem
     n
 end
 
-"""
-Convert an integer to a Singular number.
-"""
-function toS(c::Integer)
-    return Singular.QQ(c)
-end
+const GMSPOLY_LIB = joinpath(@__DIR__, "singular", "gmspoly_resonant.lib")
 
 """
-Convert a rational to a Singular number.
+Run a Singular script with the Singular executable and return everything it prints. Each call is a separate
+process, so Singular uses its own memory management (much faster than running it inside Julia).
 """
-function toS(c::Rational)
-    return Singular.QQ(BigInt(numerator(c)), BigInt(denominator(c)))
-end
-
-"""
-Convert a polynomial from AbstractPolynomials to a Singular polynomial.
-"""
-function to_singular(p::AbstractPolynomialLike; ordering = :degrevlex)
-    vs = variables(p)
-    R, _ = Singular.polynomial_ring(Singular.QQ, string.(vs); ordering = ordering)
-    B = Singular.MPolyBuildCtx(R)
-    for t in terms(p)
-        Singular.push_term!(B, toS(rationalize(coefficient(t))), [degree(monomial(t), v) for v in vs])
+function run_singular(script::AbstractString)
+    mktempdir() do dir
+        path = joinpath(dir, "script.sing")
+        write(path, script)
+        out = IOBuffer()
+        run(pipeline(ignorestatus(`$(Singular_jll.Singular()) -q --no-rc $path`); stdout = out, stderr = out))
+        return String(take!(out))
     end
-    return Singular.finish(B)
 end
 
 """
-Convert a Singular rational number to a Rational{BigInt}.
+Write the polynomial f in Singular syntax, with the variables named x(1), ..., x(n).
 """
-function fromS(c)
-    return Rational{BigInt}(BigInt(numerator(c)), BigInt(denominator(c)))
+function singular_string(f, vars = variables(f))
+    term(t) = begin
+        c = coefficient(t)
+        c = c isa Union{Integer, Rational} ? Rational{BigInt}(c) : rationalize(BigInt, c)
+        m = join(("*x($i)^$(degree(monomial(t), v))" for (i, v) in enumerate(vars) if degree(monomial(t), v) > 0))
+        "($(numerator(c))/$(denominator(c)))" * m
+    end
+    return isempty(terms(f)) ? "0" : join((term(t) for t in terms(f)), "+")
 end
 
 """
-DynamicPolynomials variables named like the Singular ring's variables, e.g. [s, x, y, z].
+Singular header that loads the patched gmspoly.lib and defines the polynomial f.
 """
-function mp_vars(R)
-    return [DynamicPolynomials.Variable(string(v),
+function singular_header(f, vars = variables(f))
+    return """
+    LIB "$(GMSPOLY_LIB)";
+    ring R=0,(x(1..$(length(vars)))),dp;
+    poly f=$(singular_string(f, vars));
+    """
+end
+
+"""
+Collect the lines printed with the given tag, or report the Singular output if the script did not finish.
+"""
+function singular_lines(out, tag)
+    occursin("RESURGENCE_DONE", out) || error("Singular failed:\n" * out)
+    return [split(l)[2:end] for l in split(out, '\n') if startswith(l, tag * " ")]
+end
+
+"""
+Parse a Singular rational number such as -25/8.
+"""
+function parseQ(c::AbstractString)
+    p = split(c, '/')
+    return length(p) == 1 ? Rational{BigInt}(parse(BigInt, p[1])) : parse(BigInt, p[1]) // parse(BigInt, p[2])
+end
+
+"""
+    isTame(f)
+
+Test whether the polynomial `f` is tame in the sense of Broughton (Singular's `gmspoly.lib`).
+"""
+function isTame(f)
+    out = run_singular(singular_header(f) * """
+    "RESURGENCE_TAME "+string(isTame(f));
+    "RESURGENCE_DONE";
+    quit;
+    """)
+    return only(singular_lines(out, "RESURGENCE_TAME"))[1] == "1"
+end
+
+"""
+    goodBasis(f; check_tame = true)
+
+Good basis of the Brieskorn lattice of the tame polynomial `f` (Singular's `gmspoly.lib`, patched to keep
+resonant terms in A). Returns the basis elements `b` as lists of (coefficient, exponents [s, x...]) and the
+matrices A0 and A1 with t[b] = [b](A0 + s A1 + s^2 d/ds).
+"""
+function goodBasis(f; check_tame = true)
+    tame = check_tame ? "if(isTame(f)!=1){\"RESURGENCE_NOTTAME\"; \"RESURGENCE_DONE\"; quit;}" : ""
+    out = run_singular(singular_header(f) * """
+    $tame
+    def Rs=goodBasis(f);
+    setring(Rs);
+    int mu=ncols(b);
+    matrix Z[mu][mu];
+    if(A/var(1)^2!=Z){"RESURGENCE_NOTLINEAR"; "RESURGENCE_DONE"; quit;}
+    int i,j; poly p;
+    for(i=1;i<=mu;i++){p=b[i]; while(p!=0){"RESURGENCE_B "+string(i)+" "+string(leadcoef(p))+" "+string(leadexp(p)); p=p-lead(p);}}
+    for(i=1;i<=mu;i++){for(j=1;j<=mu;j++){"RESURGENCE_A "+string(i)+" "+string(j)+" "+string(jet(A[i,j],0))+" "+string(jet(A[i,j]/var(1),0));}}
+    "RESURGENCE_DONE";
+    quit;
+    """)
+    isempty(singular_lines(out, "RESURGENCE_NOTTAME")) || error("Polynomial is not tame.")
+    isempty(singular_lines(out, "RESURGENCE_NOTLINEAR")) || error("goodBasis: A is not of the form A0 + s*A1")
+
+    Alines = singular_lines(out, "RESURGENCE_A")
+    n = isqrt(length(Alines))
+    A0 = zeros(Rational{BigInt}, n, n)
+    A1 = zeros(Rational{BigInt}, n, n)
+    for (i, j, a0, a1) in Alines
+        A0[parse(Int, i), parse(Int, j)] = parseQ(a0)
+        A1[parse(Int, i), parse(Int, j)] = parseQ(a1)
+    end
+    b = [Tuple{Rational{BigInt}, Vector{Int}}[] for _ in 1:n]
+    for (i, c, e) in singular_lines(out, "RESURGENCE_B")
+        push!(b[parse(Int, i)], (parseQ(c), parse.(Int, split(e, ','))))
+    end
+    return (b = b, A0 = A0, A1 = A1)
+end
+
+"""
+DynamicPolynomials variables [s, x...] for the good basis, named after the variables of f.
+"""
+function mp_vars(vars)
+    return [DynamicPolynomials.Variable(name,
             DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder},
-            DynamicPolynomials.Graded{DynamicPolynomials.LexOrder}) for v in Singular.gens(R)]
+            DynamicPolynomials.Graded{DynamicPolynomials.LexOrder}) for name in ["s"; string.(vars)]]
 end
 
 """
-Convert a Singular polynomial to a MultivariatePolynomials polynomial.
+Convert a basis element, given as a list of (coefficient, exponents), to a polynomial.
 """
-function from_singular(p::Singular.spoly, vars = mp_vars(parent(p)))
-    length(vars) == Singular.nvars(parent(p)) ||
-        error("need one variable per ring variable $(Singular.gens(parent(p)))")
+function to_polynomial(p, vars)
     one_ = prod(vars)^0
-    iszero(p) && return polynomial(zero(Rational{BigInt}) * one_)
-    return polynomial(sum(fromS(c) * prod(vars .^ e)
-                for (c, e) in zip(Singular.coefficients(p), Singular.exponent_vectors(p))))
-end
-
-"""
-Convert vector of Singular polynomials to a vector of polynomials.
-"""
-function from_singular(ps::AbstractVector{<:Singular.spoly}, vars = mp_vars(parent(first(ps))))
-    return [from_singular(p, vars) for p in ps]
-end
-
-"""
-Convert vector of Singular ideal to a vector of polynomials.
-"""
-function from_singular(I::Singular.sideal, vars = mp_vars(Singular.base_ring(I)))
-    return from_singular(Singular.gens(I), vars)
+    isempty(p) && return polynomial(zero(Rational{BigInt}) * one_)
+    return polynomial(sum(c * prod(vars .^ e) for (c, e) in p))
 end
 
 """
 Evaluate the x-exponent vector of the leading monomial (degrevlex) of the s = 0 part of p
 """
 function s0_leadexp(p)
-    terms = [e[2:end] for e in Singular.exponent_vectors(p) if e[1] == 0]
+    terms = [e[2:end] for (_, e) in p if e[1] == 0]
     isempty(terms) && error("basis element $p has no s = 0 part")
     return reduce((a, b) -> degrevlex_less(a, b) ? b : a, terms)
 end
@@ -103,63 +162,31 @@ function degrevlex_less(a::Vector{Int}, b::Vector{Int})
 end
 
 """
-Sort the basis by the leading monomial of its s = 0 part (degrevlex) and permute A accordingly.
+Permutation that sorts the basis by the leading monomial of its s = 0 part (degrevlex).
 """
-function reorder_basis(b, A; rev::Bool = false)
-    bv = b isa Singular.sideal ? Singular.gens(b) : collect(b)
-    keys = [s0_leadexp(p) for p in bv]
-
-    p = sortperm(1:length(bv); lt = (i, j) -> degrevlex_less(keys[i], keys[j]), rev = rev)
-    n = length(bv)
-    Ap = [A[p[i], p[j]] for i in 1:n, j in 1:n]
-    return bv[p], Ap, p
+function basis_order(b; rev::Bool = false)
+    keys = [s0_leadexp(p) for p in b]
+    return sortperm(1:length(b); lt = (i, j) -> degrevlex_less(keys[i], keys[j]), rev = rev)
 end
 
 """
     GaussManin(f)
 
-Gauss-Manin system of the tame polynomial `f` (Singular's `gmspoly.lib`): the matrices M and B of
-the connection in a good basis of the Brieskorn lattice, the critical values λs (eigenvalues of M),
+Gauss-Manin system of the tame polynomial `f` (Singular's `gmspoly.lib`, see `goodBasis`): the matrices M and B
+of the connection in a good basis of the Brieskorn lattice, the critical values λs (eigenvalues of M),
 the eigenvectors V, the spectral projectors Πs and the residues Rs of the Borel-plane Fuchsian system.
 """
 function GaussManin(f)
     vars = variables(f)
     dim = length(vars)
 
-    f_singular = to_singular(f)
+    gb = goodBasis(f)                    # t[b] = [b](A0 + s A1 + s^2 d/ds)
+    perm = basis_order(gb.b)
+    b = gb.b[perm]
+    n = length(b)
 
-    @assert Singular.LibGmspoly.isTame(f_singular) == 1 "Polynomial is not tame."
-
-    Rs, objs = Singular.LibGmspoly.goodBasis(f_singular)
-    b = Singular.gens(objs[:b]) # good basis of the Brieskorn lattice
-    A = objs[:A] # matrix of t with respect to b:  t = A + s^2*d/ds
-
-    b, A, perm = reorder_basis(b, A)
-
-    n = Singular.nrows(A)
-    s = Singular.gen(Rs, 1)
-
-    # Singular's jet(p,0): the constant term of p.
-    jet0(p) = iszero(p) ? p : Rs(Singular.constant_coefficient(p))
-
-    # Singular's p/var(1): divide termwise by s, dropping terms not divisible by s.
-    function divs(p)
-        B = Singular.MPolyBuildCtx(Rs)
-        for (c, e) in zip(Singular.coefficients(p), Singular.exponent_vectors(p))
-            e[1] >= 1 || continue
-            e[1] -= 1
-            Singular.push_term!(B, c, e)
-        end
-        return Singular.finish(B)
-    end
-
-    A0 = [jet0(A[i, j]) for i in 1:n, j in 1:n]          # jet(A,0)
-    A1 = [jet0(divs(A[i, j])) for i in 1:n, j in 1:n]    # jet(A/var(1),0)
-
-    toQ(p) = iszero(p) ? zero(Rational{BigInt}) : Rational{BigInt}(Singular.constant_coefficient(p))
-
-    M = collect(transpose(toQ.(A0)))
-    B = collect(transpose(toQ.(A1)))
+    M = collect(transpose(gb.A0[perm, perm]))
+    B = collect(transpose(gb.A1[perm, perm]))
 
     # Project B - (d/2) I onto the partial fraction matrices Rⱼ: the Borel transform of k^(d/2-1) ∫ ϕ e^{ikf},
     # for which every Rⱼ is nilpotent (tr Rⱼ = 0), the optimal choice for the hyperlogarithm expansion
@@ -170,6 +197,8 @@ function GaussManin(f)
     Πs = [prod((M - λs[i] * I) / (λs[j] - λs[i]) for i in eachindex(λs) if i ≠ j) for j in eachindex(λs)]
     Rs = [Π * (B - dim//2 * I) for Π in Πs]
 
-    GM = GaussManinSystem(M, B, vars, from_singular(b), λs, V, Rs, Πs, n)
+    vs = mp_vars(vars)
+    ϕ = [to_polynomial(p, vs) for p in b]
+    GM = GaussManinSystem(M, B, vars, ϕ, λs, V, Rs, Πs, n)
     return GM
 end
