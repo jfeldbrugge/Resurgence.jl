@@ -88,7 +88,7 @@ end
 
 Good basis of the Brieskorn lattice of the tame polynomial `f` (Singular's `gmspoly.lib`, patched to keep
 resonant terms in A). Returns the basis elements `b` as lists of (coefficient, exponents [s, x...]) and the
-matrices A0 and A1 with t[b] = [b](A0 + s A1 + s^2 d/ds).
+matrices A0 and A1 with `t[b] = [b](A0 + s A1 + s^2 d/ds)`.
 """
 function goodBasis(f; check_tame = true)
     tame = check_tame ? "if(isTame(f)!=1){\"RESURGENCE_NOTTAME\"; \"RESURGENCE_DONE\"; quit;}" : ""
