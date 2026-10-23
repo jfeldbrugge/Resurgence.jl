@@ -45,7 +45,8 @@ function hyperterminant(M, w; method = :closed, rtol = 1e-10)
     w = complex(float(w))
     method in (:closed, :quadrature) || error("hyperterminant: method must be :closed or :quadrature")
     if real(w) > 0 && abs(imag(w)) <= 1e-12 * abs(w)          # on a Stokes line: median value
-        side(σ) = method == :closed ? _hyperterminant_closed(M, complex(real(w), σ * 1e-10 * abs(w))) :
+        ϵ = min(1e-10, sqrt(eps(real(w))))                    # offset from the cut, in the precision of w
+        side(σ) = method == :closed ? _hyperterminant_closed(M, complex(real(w), σ * ϵ * abs(w))) :
                                       _hyperterminant(M, w, -0.5σ; rtol = rtol)
         return (side(1) + side(-1)) / 2
     end
@@ -59,21 +60,54 @@ end
 # closed form, valid off the branch cut w > 0 of E_M(-w)
 _hyperterminant_closed(M, w) = -w * exp(-w) * expint(M, -w)
 
-# h(M, w) by quadrature along the ray v = ρ e^{iδ}, over the window in which the Gamma weight lives
-function _hyperterminant(M, w, δ; rtol = 1e-10)
-    e = cis(δ); c = cos(δ)
-    lg = loggamma(M)
-    f(ρ) = (v = ρ * e; exp((M - 1) * (log(ρ) + im * δ) - v - lg) / (1 - v / w) * e)
-    peak = max(M - 1, 0) / c
-    width = (12 * sqrt(M) + 12) / c
-    lo = max(0.0, peak - width)
-    quadgk(f, lo, max(peak, lo + 1e-12), peak + width; rtol = rtol)[1]
+# h(M, w) for M = Mlo, …, Mhi from one closed-form evaluation and the recurrence of E_M,
+#     h(M + 1, w) = w (h(M, w) - 1)/M,
+# run upwards from M₀ ≈ |w| (where it is stable, errors shrink by |w|/M) and downwards below M₀
+# (h(M) = 1 + M h(M + 1)/w, errors shrink by M/|w|). On a Stokes line, the median value as in `hyperterminant`.
+# This is the level-one case of the recurrences of Olde Daalhuis (Hyperterminants II, J. Comput. Appl. Math.
+# 89 (1997) 87). In double precision, where E_M is cheap, the closed form is used for every M.
+function _hyperterminants(Mlo, Mhi, w)
+    w = complex(float(w))
+    real(w) isa Float64 && return [hyperterminant(M, w) for M in Mlo:Mhi]
+    if real(w) > 0 && abs(imag(w)) <= 1e-12 * abs(w)
+        ϵ = min(1e-10, sqrt(eps(real(w))))
+        return (_hyperterminants(Mlo, Mhi, complex(real(w), ϵ * abs(w))) .+
+                _hyperterminants(Mlo, Mhi, complex(real(w), -ϵ * abs(w)))) ./ 2
+    end
+    h = Vector{typeof(w)}(undef, Mhi - Mlo + 1)
+    M₀ = clamp(ceil(Int, abs(w)), Mlo, Mhi)
+    h[M₀ - Mlo + 1] = _hyperterminant_closed(M₀, w)
+    for M in M₀:Mhi-1
+        h[M - Mlo + 2] = w * (h[M - Mlo + 1] - 1) / M
+    end
+    for M in M₀-1:-1:Mlo
+        h[M - Mlo + 1] = 1 + M * h[M - Mlo + 2] / w
+    end
+    h
 end
 
-# Data shared by the recursion: Borel singularities, series and Stokes constants
-struct HyperData
-    t::Vector{ComplexF64}
-    T::Vector{Vector{ComplexF64}}
+# Window of the Gamma weight v^{M-1} e^{-v} needed for rtol: the half-width in standard deviations,
+# plus a margin for the e^{-v} tail when M is small (12 for the default rtol = 1e-10)
+_window(rtol) = max(12, sqrt(2 * log(1 / Float64(rtol))) + 2)
+_tail(rtol) = max(12, log(1 / Float64(rtol)) - 11)
+
+# h(M, w) by quadrature along the ray v = ρ e^{iδ}, over the window in which the Gamma weight lives.
+# Computed in the precision of w.
+function _hyperterminant(M, w, δ; rtol = 1e-10)
+    R = real(typeof(w))
+    δ = R(δ); e = cis(δ); c = cos(δ)
+    lg = loggamma(R(M))
+    f(ρ) = (v = ρ * e; exp((M - 1) * (log(ρ) + im * δ) - v - lg) / (1 - v / w) * e)
+    peak = max(M - 1, 0) / c
+    width = (_window(rtol) * sqrt(R(M)) + _tail(rtol)) / c
+    lo = max(zero(R), peak - width)
+    quadgk(f, lo, max(peak, lo + R(1e-12)), peak + width; rtol = rtol)[1]
+end
+
+# Data shared by the recursion: Borel singularities, series and Stokes constants, in the precision C
+struct HyperData{C<:Complex}
+    t::Vector{C}
+    T::Vector{Vector{C}}
     K::Matrix{Int}
 end
 adjacent(d::HyperData, j) = [l for l in eachindex(d.t) if l != j && d.K[l, j] != 0]
@@ -114,20 +148,22 @@ against the level-one kernel,
 
     w^{-N} ∫_0^∞ v^{N-1} e^{-v}/(1 - v/w) R_{N_l}^(l)(v/F) dv,       w = κF.
 """
-function _remainder(d::HyperData, j, κ, N, L, scale; rtol = 1e-10)
-    (L == 0 || N == 0) && return zero(ComplexF64)
-    total = zero(ComplexF64)
+function _remainder(d::HyperData{C}, j, κ, N, L, scale; rtol = 1e-10) where C
+    R = real(C)
+    (L == 0 || N == 0) && return zero(C)
+    total = zero(C)
     for l in adjacent(d, j)
         F = d.t[l] - d.t[j]
         w = κ * F
         Nl = min(max(0, N - ceil(Int, scale * abs(F))), length(d.T[l]))
         Nl == 0 && continue                            # beyond the accuracy of this level
-        c = d.K[l, j] / (2π * im)
+        c = d.K[l, j] / (2 * R(π) * im)
         logw = log(w); logF = log(F)
-        for s in 0:Nl-1                                # level-one hyperterminants, closed form
+        hs = _hyperterminants(N - Nl + 1, N, w)        # level-one hyperterminants h(N - s, w), s < Nl
+        for s in 0:Nl-1
             Ts = d.T[l][s+1]
             iszero(Ts) && continue
-            total += c * exp(log(Ts) + s * logF + loggamma(N - s) - N * logw) * hyperterminant(N - s, w)
+            total += c * exp(log(Ts) + s * logF + loggamma(R(N - s)) - N * logw) * hs[Nl - s]
         end
         if L > 1                                       # next level: remainder of saddle l
             total += c * _edge_integral(κl -> _remainder(d, l, κl, Nl, L - 1, scale; rtol = rtol),
@@ -148,17 +184,18 @@ function _edge_integral(R, F, w, N, Nl; rtol = 1e-10)
     _edge_integral(R, F, w, N, Nl, δ; rtol = rtol)
 end
 function _edge_integral(R, F, w, N, Nl, δ; rtol = 1e-10)
-    e = cis(δ); c = cos(δ)
-    lg = loggamma(N)
+    Re = real(typeof(w))
+    δ = Re(δ); e = cis(δ); c = cos(δ)
+    lg = loggamma(Re(N))
     f(ρ) = begin
         v = ρ * e
         val = exp((N - 1) * (log(ρ) + im * δ) - v - lg) / (1 - v / w) * R(v / F) * e
         isfinite(val) ? val : zero(val)            # negligible tail where the weight underflows
     end
     peak = max(N - Nl - 1, 0) / c
-    width = (12 * sqrt(N - Nl + 1) + 12) / c
-    lo = max(0.0, peak - width)
-    exp(lg - N * log(w)) * quadgk(f, lo, max(peak, lo + 1e-12), peak + width; rtol = rtol)[1]
+    width = (_window(rtol) * sqrt(Re(N - Nl + 1)) + _tail(rtol)) / c
+    lo = max(zero(Re), peak - width)
+    exp(lg - N * log(w)) * quadgk(f, lo, max(peak, lo + Re(1e-12)), peak + width; rtol = rtol)[1]
 end
 
 """
@@ -183,7 +220,8 @@ graph (`path_lengths`), and every re-expanded series at N_child = max(0, N_paren
 adjacent singularity. Pass a vector `N` to set the top-level truncations directly.
 
 Level one is evaluated in closed form; level L nests L - 1 quadratures, so levels beyond 2 become
-expensive. The relation used assumes μ_j = 0 (non-degenerate saddle points in the normalisation of the
+expensive. The computation runs in the precision of `k`: pass `k::BigFloat` (with the series in
+BigFloat, as returned by `transseries`, and a matching `rtol`) for results beyond double precision. The relation used assumes μ_j = 0 (non-degenerate saddle points in the normalisation of the
 package). Returns `(value, N, terms)` with `terms[j]` the contribution of saddle j.
 """
 function hyperasymptotic(transseries, n, Σ, K, k; level = 1, component = 1, N = nothing,
@@ -194,13 +232,17 @@ function hyperasymptotic(transseries, n, Σ, K, k; level = 1, component = 1, N =
         error("hyperasymptotic: the resurgence relation is implemented for μ_j = 0 only")
     Kint = round.(Int, real.(K))
     maximum(abs.(K .- Kint)) < 1e-6 || @warn "hyperasymptotic: the Stokes constants are not integers"
-    Ts = [ComplexF64.(_coefficients(s, component)) for s in series]
-    d = HyperData(ComplexF64.(Σ), Ts, Kint)
+    C = complex(float(typeof(k)))
+    Ts = [C.(_coefficients(s, component)) for s in series]
+    t = [C(-im * _critical_value(s)) for s in series]  # Borel singularities in the precision of k
+    maximum(abs.(ComplexF64.(t) .- ComplexF64.(Σ))) < 1e-8 * max(1, maximum(abs, Σ)) ||
+        error("hyperasymptotic: Σ must be ordered like the transseries")
+    d = HyperData(t, Ts, Kint)
     α = truncation == :daalhuis ? path_lengths(Σ, Kint, level + 1) :
         truncation == :uniform  ? (level + 1) .* singulants(Σ, Kint) :
         error("hyperasymptotic: truncation must be :daalhuis or :uniform")
     Ns = zeros(Int, length(series))
-    terms = Vector{ComplexF64}(undef, length(series))
+    terms = Vector{C}(undef, length(series))
     for (j, s) in enumerate(series)
         if n[j] == 0
             terms[j] = 0
@@ -212,9 +254,9 @@ function hyperasymptotic(transseries, n, Σ, K, k; level = 1, component = 1, N =
             Nj = length(Ts[j])
         end
         Ns[j] = Nj
-        S = sum((Ts[j][m+1] / k^m for m in 0:Nj-1); init = zero(ComplexF64))
+        S = sum((Ts[j][m+1] / k^m for m in 0:Nj-1); init = zero(C))
         S += _remainder(d, j, complex(float(k)), Nj, level, abs(k); rtol = rtol)
-        terms[j] = n[j] * exp(im * k * ComplexF64(_critical_value(s))) * (im * k)^ComplexF64(s.μ) * S
+        terms[j] = n[j] * exp(im * k * C(_critical_value(s))) * (im * k)^C(s.μ) * S
     end
     (value = sum(terms), N = Ns, terms = terms)
 end
