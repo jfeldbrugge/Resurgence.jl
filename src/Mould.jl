@@ -12,17 +12,21 @@
 
 """
 Keyhole paths (γ₊, γ₋) from a = σ_i + r_i e to b = σ_j + r_j e, e = (σ_j - σ_i)/|σ_j - σ_i|.
-Singular points σ_k on (or close to) the segment σ_i → σ_j are avoided by half-circles on the
-left (side = +1) or right (side = -1) of the directed line; γ₊ and γ₋ differ only around σ_j.
+Singular points σ_k close to the segment σ_i → σ_j are avoided by half-circles on the side on which
+the segment passes them: on the left of the directed line when σ_k lies to its right, and vice versa,
+so that the path stays homotopic to the segment and K_{j←i} = -K_{i←j}. Only a σ_k on the line
+itself (a degenerate Stokes line) is passed on the left (side = +1) or right (side = -1).
+γ₊ and γ₋ differ only around σ_j.
 """
-function keyhole_paths(Σ, i, j; npts = 12, side = 1)
+function keyhole_paths(Σ, i, j; npts = 12, side = 1, atol = 1e-10)
     e  = (Σ[j] - Σ[i]) / abs(Σ[j] - Σ[i]); len = abs(Σ[j] - Σ[i])
     r(k) = 0.3 * dist(Σ[k], Σ; skip = k)
     arc(k, o) = [Σ[k] + r(k)*e*cis(o*π*(1 - m/npts)) for m in 0:npts]  # σ_k - r_k e → σ_k + r_k e
     s(k) = real(conj(e) * (Σ[k] - Σ[i]))                                # position along the line
-    between = [k for k in eachindex(Σ) if k ∉ (i, j) && 0 < s(k) < len &&
-               abs(imag(conj(e) * (Σ[k] - Σ[i]))) < r(k)]
-    stem = [Σ[i] + r(i)*e; reduce(vcat, (arc(k, side) for k in sort(between; by = s)); init = eltype(Σ)[])]
+    h(k) = imag(conj(e) * (Σ[k] - Σ[i]))                                # offset, > 0 on the left
+    side_of(k) = abs(h(k)) < atol * len ? side : -Int(sign(h(k)))
+    between = [k for k in eachindex(Σ) if k ∉ (i, j) && 0 < s(k) < len && abs(h(k)) < r(k)]
+    stem = [Σ[i] + r(i)*e; reduce(vcat, (arc(k, side_of(k)) for k in sort(between; by = s)); init = eltype(Σ)[])]
     [stem; arc(j, 1)], [stem; arc(j, -1)]
 end
 

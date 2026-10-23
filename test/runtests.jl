@@ -182,4 +182,14 @@ Kpaper = [ 0  0 -1  2 -1;
         @test eH2 < eH1 / 5
     end
 end
+
+# A singular point close to the segment σ_i → σ_j is passed on the side of the segment, in both
+# directions, so that the keyhole paths of K_{j←i} and K_{i←j} are homotopic to the same segment.
+@testset "keyhole paths around a nearby singular point" begin
+    for σ3 in (1 + 0.01im, 1 - 0.01im), (i, j) in ((1, 2), (2, 1))
+        γ, _ = Resurgence.keyhole_paths(ComplexF64[0, 2, σ3], i, j)
+        arcpts = [z for z in γ if abs(z - σ3) < 0.5]
+        @test all(sign(imag(z - σ3)) == -sign(imag(σ3)) for z in arcpts if abs(real(z - σ3)) < 0.1)
+    end
+end
 progress("done")
