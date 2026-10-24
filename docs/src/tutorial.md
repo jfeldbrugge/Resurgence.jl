@@ -6,6 +6,8 @@ CurrentModule = Resurgence
 
 In this tutorial, we demonstrate the main features of Resurgence.jl with two examples: the Pearcey integral, a one-dimensional integral with three saddle points, and the Lorentzian lens of wave optics, a rational exponent that we treat through a polynomial lift (Sec. VII B of the paper).
 
+All computations run in extended precision. The asymptotic series are computed in `BigFloat`, and the approximations of the integral, [`superasymptotic`](@ref), [`hyperasymptotic`](@ref) and [`BorelPadeResum`](@ref), run in the precision of the wavenumber $k$: passing `k::BigFloat` gives results far beyond double precision, which we compare with the exact integrals computed in `BigFloat` as well.
+
 ## The Pearcey integral
 
 We consider the Pearcey integral
@@ -20,6 +22,7 @@ The exponent has three saddle points, the roots of $f'(q) = 4q^3 + q + 1$: one r
 
 ```@example pearcey
 using Resurgence, DynamicPolynomials, CairoMakie
+setprecision(BigFloat, 256)
 
 @polyvar q
 f = q^4 + 1//2 * q^2 + q
@@ -52,10 +55,10 @@ ComplexF64.(GM.λs)
 
 ### The transseries
 
-[`transseries`](@ref) computes the asymptotic series of all saddle points, ordered as `GM.λs`, as a vector of [`Expansion`](@ref)s. Each expansion holds the saddle point `x`, the Borel singularity `f₀` $= t_j = -i\lambda_j$, the exponent `μ` and the coefficients `Ts`, normalised such that `Ts[1]` $= 1/\sqrt{f''(q_j)}$.
+[`transseries`](@ref) computes the asymptotic series of all saddle points, ordered as `GM.λs`, as a vector of [`Expansion`](@ref)s. Each expansion holds the saddle point `x`, the Borel singularity `f₀` $= t_j = -i\lambda_j$, the exponent `μ` and the coefficients `Ts`, normalised such that `Ts[1]` $= 1/\sqrt{f''(q_j)}$. We compute the series to order 150, enough for the high-order Borel–Padé approximants and for the hyperasymptotic truncations below.
 
 ```@example pearcey
-trans = transseries(f, GM, 60; saddles = saddles)
+trans = transseries(f, GM, 150; saddles = saddles)
 Σ  = ComplexF64[s.f₀    for s in trans]        # Borel singularities t = -iλ
 T0 = ComplexF64[s.Ts[1] for s in trans]        # normalisation of the series
 Rs = [ComplexF64.(R) for R in GM.Rs]           # residues of the Fuchsian system
@@ -113,60 +116,60 @@ The real saddle point switches on one of the two complex saddle points, the one 
 
 ### Approximations of the integral
 
-We compare the approximations with the exact integral, evaluated by quadrature along the real line, tilted into the valleys of $e^{ikq^4}$ for large $|q|$:
+The exact integral follows from a quadrature in `BigFloat` along the rotated line $q = e^{i\pi/8} u$, on which $e^{ikq^4}$ decays as $e^{-ku^4}$; the integrand has no singularities, so the rotation does not change the integral:
 
 ```@example pearcey
+const QuadGK = Resurgence.QuadGK
+
 fn(u) = u^4 + u^2 / 2 + u
-function exact(k; h = 1e-4)
-    acc = 0.0im
-    for t in -6:h:6
-        u = t + im * 0.25 * tanh(t)
-        acc += exp(im * k * fn(u)) * (1 + im * 0.25 * sech(t)^2)
-    end
-    sqrt(k / (2π * im)) * acc * h
+function exact(k)
+    e = cis(BigFloat(π) / 8)
+    I = QuadGK.quadgk(u -> exp(im * k * fn(e * u)), BigFloat(-8), BigFloat(0), BigFloat(8); rtol = big"1e-60", order = 40)[1]
+    sqrt(k / (2 * BigFloat(π) * im)) * e * I
 end
-exact(6.0)
+exact(big"6.0")
 ```
 
-The superasymptotic approximation truncates each relevant series near its smallest term; the hyperasymptotic approximation re-expands the remainder in the series of the adjacent saddle points:
+The superasymptotic approximation truncates each relevant series near its smallest term; the hyperasymptotic approximation re-expands the remainder in the series of the adjacent saddle points. With `k::BigFloat` both are evaluated in `BigFloat`; `rtol` sets the accuracy of the quadratures of the hyperasymptotic levels:
 
 ```@example pearcey
-k = 6.0
+k = big"6.0"
 (superasymptotic = superasymptotic(trans, n, Σ, K, k).value,
- hyperasymptotic = hyperasymptotic(trans, n, Σ, K, k; level = 1).value)
+ hyperasymptotic = hyperasymptotic(trans, n, Σ, K, k; level = 1, rtol = big"1e-45").value)
 ```
 
-The Borel–Padé sum of the relevant series provides an independent resummation:
+The Borel–Padé sum of the relevant series provides an independent resummation, likewise in the precision of $k$:
 
 ```@example pearcey
-borel_pade(k) = sum(n[j] * exp(im * k * ComplexF64(im * trans[j].f₀)) *
-                    ComplexF64(BorelPadeResum(trans[j], k)[1]) for j in eachindex(trans) if n[j] != 0)
-borel_pade(6.0)
+borel_pade(k) = sum(n[j] * exp(im * k * im * trans[j].f₀) * BorelPadeResum(trans[j], k)[1]
+                    for j in eachindex(trans) if n[j] != 0)
+borel_pade(big"6.0")
 ```
 
 The errors as a function of $k$:
 
 ```@example pearcey
-ks = 2.0:1.0:10.0
+ks = 1:10
 errors = map(ks) do k
-    Ψ = exact(k)
-    (SA = abs(Ψ - superasymptotic(trans, n, Σ, K, k).value),
-     H1 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, k; level = 1).value),
-     H2 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, k; level = 2).value),
-     BP = abs(Ψ - borel_pade(k)))
+    kb = BigFloat(k)
+    Ψ  = exact(kb)
+    (SA = abs(Ψ - superasymptotic(trans, n, Σ, K, kb).value),
+     H1 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, kb; level = 1, rtol = big"1e-45").value),
+     H2 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, kb; level = 2, rtol = big"1e-45").value),
+     BP = abs(Ψ - borel_pade(kb)))
 end
 
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "k", ylabel = "|Ψ - Ψₐₚₚᵣₒₓ|", yscale = log10)
 for (key, label) in ((:SA, "superasymptotic"), (:H1, "hyperasymptotic, level 1"),
                      (:H2, "hyperasymptotic, level 2"), (:BP, "Borel-Padé"))
-    scatterlines!(ax, collect(ks), [max(e[key], 1e-16) for e in errors], label = label)
+    scatterlines!(ax, collect(ks), [Float64(e[key]) for e in errors], label = label)
 end
 axislegend(ax, position = :lb)
 fig
 ```
 
-The quadrature for the exact integral is accurate to about $10^{-14}$, which sets the floor of the errors.
+The exact integral is accurate to about $10^{-60}$, far below the errors shown. Every hyperasymptotic level improves the approximation, but here only slowly: the nearest adjacent Borel singularities lie at distance $0.707$, so that each level adds only $0.707$ to the exponential rate $e^{-\alpha^{(L)} k}$ of the error, $\alpha^{(L)} = 0.707,\ 1.414,\ 2.121$ for $L = 0, 1, 2$ ([`path_lengths`](@ref)). The Borel–Padé sum, which uses all 151 coefficients of the series, is far more accurate for this integral: at $k = 10$ the errors are $9.0\times10^{-5}$ (superasymptotic), $3.6\times10^{-9}$ (level 1), $6.0\times10^{-13}$ (level 2) and $2.9\times10^{-40}$ (Borel–Padé).
 
 ## The Lorentzian lens
 
@@ -186,7 +189,7 @@ f(x_1, x_2, x_3) = P(x_1)\, x_2 + x_3 \left(x_2\, Q(x_1) - 1\right).
 
 ```@example lens
 using Resurgence, DynamicPolynomials, MultivariatePolynomials, LinearAlgebra, CairoMakie
-setprecision(BigFloat, 512)
+setprecision(BigFloat, 512)                       # for the saddle points and the Gauss-Manin system
 
 y, β = 1, 1
 @polyvar x1 x2 x3 monomial_order = Graded{MultivariatePolynomials.Reverse{InverseLexOrder}}
@@ -206,7 +209,7 @@ d2f(x) = 1 - 2β * (1 - 3x^2) / (1 + x^2)^3
 u = [f(p) for p in saddles]
 
 lens = map(1:GM.n) do j
-    λ, μ, Ts = asymptotic(j, GM, 120)
+    λ, μ, Ts = asymptotic(j, GM, 160)
     x  = saddles[argmin(abs.(u .- λ))][1]          # x₁ coordinate of the saddle point
     T0 = 1 / sqrt(d2f(Complex{BigFloat}(x)))
     (expansion = Expansion(x, -im * λ, μ, T0 .* Ts[4, :] ./ Ts[4, 1]),
@@ -236,39 +239,42 @@ n0 = [abs(imag(ComplexF64(s.x))) < 1e-10 ? 1 : 0 for s in trans]
 n  = southeast(Σ, K, n0; verbose = true)
 ```
 
-Besides the real saddle point (the real image of the lens), a complex saddle point contributes: an evanescent complex image. The approximations converge to the exact integral:
+Besides the real saddle point (the real image of the lens), a complex saddle point contributes: an evanescent complex image.
+
+The exact integral follows from a quadrature in `BigFloat` along the rotated line $x = y + e^{i\pi/8} u$, on which the Gaussian factor decays as $e^{-k u^2 \sin(\pi/4)/2}$; the rotation does not cross the poles $x = \pm i$ of $1/(1 + x^2)$. The approximations, in `BigFloat` at 256 bits, converge to it:
 
 ```@example lens
+setprecision(BigFloat, 256)                       # for the approximations
+const QuadGK = Resurgence.QuadGK
+
 fd(x) = (x - y)^2 / 2 + β / (1 + x^2)
-function exact(k; h = 1e-4, L = 14)
-    w(s)  = 0.5 * (1 + tanh((s - y)^2 - 25))
-    dw(s) = 0.5 * (1 - tanh((s - y)^2 - 25)^2) * 2(s - y)
-    acc = zero(ComplexF64)
-    for s in (y - L):h:(y + L)
-        x  = s + im * (s - y) * w(s)
-        acc += exp(im * k * fd(x)) * (1 + im * (w(s) + (s - y) * dw(s)))
-    end
-    sqrt(k / (2π * im)) * acc * h
+function exact(k)
+    e = cis(BigFloat(π) / 8)
+    I = QuadGK.quadgk(u -> exp(im * k * fd(y + e * u)), BigFloat(-25), BigFloat(0), BigFloat(25); rtol = big"1e-60", order = 40)[1]
+    sqrt(k / (2 * BigFloat(π) * im)) * e * I
 end
 
-borel_pade(k) = sum(n[j] * exp(im * k * ComplexF64(im * trans[j].f₀)) *
-                    ComplexF64(BorelPadeResum(trans[j], k)[1]) for j in eachindex(trans) if n[j] != 0)
+borel_pade(k) = sum(n[j] * exp(im * k * im * trans[j].f₀) * BorelPadeResum(trans[j], k)[1]
+                    for j in eachindex(trans) if n[j] != 0)
 
-ks = 2.0:2.0:16.0
+ks = 1:10
 errors = map(ks) do k
-    Ψ = exact(k)
-    (SA = abs(Ψ - superasymptotic(trans, n, Σ, K, k).value),
-     H1 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, k; level = 1).value),
-     H2 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, k; level = 2).value),
-     BP = abs(Ψ - borel_pade(k)))
+    kb = BigFloat(k)
+    Ψ  = exact(kb)
+    (SA = abs(Ψ - superasymptotic(trans, n, Σ, K, kb).value),
+     H1 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, kb; level = 1, rtol = big"1e-45").value),
+     H2 = abs(Ψ - hyperasymptotic(trans, n, Σ, K, kb; level = 2, rtol = big"1e-45").value),
+     BP = abs(Ψ - borel_pade(kb)))
 end
 
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "k", ylabel = "|Ψ - Ψₐₚₚᵣₒₓ|", yscale = log10)
 for (key, label) in ((:SA, "superasymptotic"), (:H1, "hyperasymptotic, level 1"),
                      (:H2, "hyperasymptotic, level 2"), (:BP, "Borel-Padé"))
-    scatterlines!(ax, collect(ks), [max(e[key], 1e-16) for e in errors], label = label)
+    scatterlines!(ax, collect(ks), [Float64(e[key]) for e in errors], label = label)
 end
-axislegend(ax, position = :rt)
+axislegend(ax, position = :lb)
 fig
 ```
+
+From $k \approx 4$ on, each hyperasymptotic level gains three to four orders of magnitude: at $k = 10$ the errors are $1.0\times10^{-5}$ (superasymptotic), $5.6\times10^{-9}$ (level 1) and $1.4\times10^{-12}$ (level 2). The Borel–Padé sum, which uses all 161 coefficients, is again far more accurate, $2.6\times10^{-36}$ at $k = 10$.

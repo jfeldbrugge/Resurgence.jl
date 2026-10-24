@@ -199,7 +199,8 @@ Kpaper = [ 0  0 -1  2 -1;
 end
 
 # Exponential integral in BigFloat (continued fraction and series) against SpecialFunctions, in both
-# half-planes and close to the negative real axis
+# half-planes and close to the negative real axis. At 512 bits SpecialFunctions is accurate to about 1e-99
+# here (against a 1536-bit reference), the continued fraction and series to about 1e-170.
 @testset "exponential integral in BigFloat" begin
     for (m, z) in ((1, 0.3 + 0.2im), (5, 0.8 - 0.5im), (20, -14.5 + 37.3im), (30, -29.0 + 1.0im), (40, 25.0 + 0.0im),
                    (12, -3.0 + 0.01im), (60, -50.0 - 20.0im), (3, 0.5 + 90.0im))

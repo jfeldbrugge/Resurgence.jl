@@ -75,15 +75,16 @@ function evaluateAdjacency(transseries, ϵ = 0.1)
 end
 
 """
-    BorelPadeResum(trans, k; ϵ = 0.01)
+    BorelPadeResum(trans, k; ϵ = 0.01, rtol = sqrt(eps(real(float(k)))))
 
 Borel-Padé sum of the series Σₘ Tₘ/kᵐ (`trans.Ts`): the Borel transform Φ(t) = Σₘ Tₘ tᵐ/m! is
 replaced by its diagonal Padé approximant and Laplace transformed, k ∫₀^∞ e^{-kt} Φ(t) dt, which
 reproduces Σₘ Tₘ/kᵐ term by term. When a Padé pole lies within an angle `ϵ` of the positive real
 axis (a Stokes line), the ray is rotated upwards, halfway to the next pole direction (at most π/4):
-the lateral sum from above. Returns `(integral, error)`.
+the lateral sum from above. The Laplace integral is computed in the precision of `k` (pass
+`k::BigFloat` for results beyond double precision). Returns `(integral, error)`.
 """
-function BorelPadeResum(trans, k; ϵ = 0.01)
+function BorelPadeResum(trans, k; ϵ = 0.01, rtol = sqrt(eps(real(float(k)))))
     borelTransform = BorelTransform(trans.Ts, big"1")    # Tₘ tᵐ / m!
 
     order = length(trans.Ts) ÷ 2 - 1
@@ -94,12 +95,14 @@ function BorelPadeResum(trans, k; ϵ = 0.01)
     poles = Polynomials.roots(Polynomials.Polynomial(den))
     angles = angle.(poles)
 
-    θ = 0.0
+    R = real(float(typeof(k)))
+    θ = zero(R)
     if any(a -> abs(a) < ϵ, angles)
         above = filter(>(ϵ), angles)
-        θ = min(minimum(above; init = π / 2) / 2, π / 4)
+        θ = R(min(minimum(above; init = π / 2) / 2, π / 4))
     end
 
-    int, err = quadgk(t -> cis(θ) * integrand(t * cis(θ), k), 0.0, Inf)
+    order = R == Float64 ? 7 : 40                       # high order beyond double precision
+    int, err = quadgk(t -> cis(θ) * integrand(t * cis(θ), k), zero(R), R(Inf); rtol = rtol, order = order)
     return int, err
 end
