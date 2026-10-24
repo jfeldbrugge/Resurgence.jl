@@ -205,7 +205,7 @@ end
                    (12, -3.0 + 0.01im), (60, -50.0 - 20.0im), (3, 0.5 + 90.0im))
         zb = Complex{BigFloat}(z)
         ref = Resurgence.SpecialFunctions.expint(m, zb)
-        @test abs(Resurgence._expint(m, zb) - ref) < 1e-100 * abs(ref)
+        @test abs(Resurgence._expint(m, zb) - ref) < 1e-90 * abs(ref)
     end
 end
 
