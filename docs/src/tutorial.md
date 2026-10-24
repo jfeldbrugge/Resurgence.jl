@@ -254,10 +254,10 @@ function exact(k)
     sqrt(k / (2 * BigFloat(π) * im)) * e * I
 end
 
-borel_pade(k) = sum(n[j] * exp(im * k * im * trans[j].f₀) * BorelPadeResum(trans[j], k)[1]
+borel_pade(k) = sum(n[j] * exp(im * k * im * trans[j].f₀) * BorelPadeResum(trans[j], k; rtol = big"1e-60")[1]
                     for j in eachindex(trans) if n[j] != 0)
 
-ks = 1:10
+ks = 1:15
 errors = map(ks) do k
     kb = BigFloat(k)
     Ψ  = exact(kb)
