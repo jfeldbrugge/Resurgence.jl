@@ -181,6 +181,32 @@ Kpaper = [ 0  0 -1  2 -1;
         @test eH1 < eSA / 5
         @test eH2 < eH1 / 5
     end
+
+    # hyperasymptotics in the precision of k: BigFloat agrees with double precision, and level 2 is not
+    # limited by the double-precision quadratures
+    @testset "extended precision, k = 4" begin
+        progress("  k = 4 in BigFloat (levels 1, 2)")
+        Ψ = exact(4.0)
+        h1F = hyperasymptotic(expansions, n, Σ, K, 4.0; level = 1).value
+        h2F = hyperasymptotic(expansions, n, Σ, K, 4.0; level = 2).value
+        h1B = hyperasymptotic(expansions, n, Σ, K, big"4.0"; level = 1, rtol = big"1e-30").value
+        h2B = hyperasymptotic(expansions, n, Σ, K, big"4.0"; level = 2, rtol = big"1e-30").value
+        @test h1B isa Complex{BigFloat} && h2B isa Complex{BigFloat}
+        @test abs(h1B - h1F) < 1e-12
+        @test abs(h2B - h2F) < 1e-10
+        @test abs(Ψ - h2B) < 2 * abs(Ψ - h2F) + 1e-12
+    end
+end
+
+# Exponential integral in BigFloat (continued fraction and series) against SpecialFunctions, in both
+# half-planes and close to the negative real axis
+@testset "exponential integral in BigFloat" begin
+    for (m, z) in ((1, 0.3 + 0.2im), (5, 0.8 - 0.5im), (20, -14.5 + 37.3im), (30, -29.0 + 1.0im), (40, 25.0 + 0.0im),
+                   (12, -3.0 + 0.01im), (60, -50.0 - 20.0im), (3, 0.5 + 90.0im))
+        zb = Complex{BigFloat}(z)
+        ref = Resurgence.SpecialFunctions.expint(m, zb)
+        @test abs(Resurgence._expint(m, zb) - ref) < 1e-100 * abs(ref)
+    end
 end
 
 # A singular point close to the segment σ_i → σ_j is passed on the side of the segment, in both

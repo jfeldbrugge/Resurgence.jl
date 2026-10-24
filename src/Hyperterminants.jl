@@ -58,7 +58,47 @@ function hyperterminant(M, w; method = :closed, rtol = 1e-10)
 end
 
 # closed form, valid off the branch cut w > 0 of E_M(-w)
-_hyperterminant_closed(M, w) = -w * exp(-w) * expint(M, -w)
+_hyperterminant_closed(M, w) = -w * exp(-w) * _expint(M, -w)
+
+# Exponential integral E_n(z), n ≥ 1, |ph z| < π. Double precision: SpecialFunctions. Complex{BigFloat}: the
+# continued fraction in the right half-plane and the power series elsewhere, where SpecialFunctions is slow
+# (30-60 times slower in the left half-plane at 256 bits). Both are accurate to the working precision.
+_expint(n, z) = expint(n, z)
+function _expint(n::Integer, z::Complex{BigFloat})
+    (abs(z) >= 1 && real(z) >= 0) && return _expint_cf(n, z)
+    # the terms of the series reach e^{|z|} while E_n(z) ~ e^{-z}/z: guard bits for the cancellation
+    guard = ceil(Int, (abs(z) + real(z)) * log2(ℯ)) + 64
+    Complex{BigFloat}(setprecision(BigFloat, precision(BigFloat) + guard) do
+        _expint_series(n, Complex{BigFloat}(z))
+    end)
+end
+
+# E_n(z) = (-z)^{n-1}/(n-1)! (ψ(n) - log z) - Σ_{k ≥ 0, k ≠ n-1} (-z)^k / ((k - n + 1) k!)
+function _expint_series(n, z::Complex{T}) where T
+    ψ = -T(MathConstants.eulergamma) + sum((one(T) / i for i in 1:n-1); init = zero(T))
+    term = one(Complex{T}); s = zero(Complex{T}); k = 0
+    while true
+        k != n - 1 && (s -= term / (k - n + 1))
+        k += 1
+        term *= -z / k
+        (k > n && abs(term) < eps(T) * abs(s) / 1024) && break
+    end
+    (-z)^(n - 1) / factorial(big(n - 1)) * (ψ - log(z)) + s
+end
+
+# E_n(z) = e^{-z} (1/(z + n -) 1·n/(z + n + 2 -) 2(n + 1)/(z + n + 4 -) …), modified Lentz algorithm
+function _expint_cf(n, z::Complex{T}) where T
+    tiny = floatmin(T) * 2^100
+    b = z + n; c = one(Complex{T}) / tiny; d = 1 / b; h = d
+    for i in 1:100_000
+        an = -i * (n - 1 + i)
+        b += 2
+        d = 1 / (an * d + b); c = b + an / c
+        δ = c * d; h *= δ
+        abs(δ - 1) < eps(T) && return h * exp(-z)
+    end
+    error("_expint_cf: no convergence for n = $n, z = $z")
+end
 
 # h(M, w) for M = Mlo, …, Mhi from one closed-form evaluation and the recurrence of E_M,
 #     h(M + 1, w) = w (h(M, w) - 1)/M,
@@ -91,6 +131,10 @@ end
 _window(rtol) = max(12, sqrt(2 * log(1 / Float64(rtol))) + 2)
 _tail(rtol) = max(12, log(1 / Float64(rtol)) - 11)
 
+# Gauss-Kronrod order of the quadratures: the default of QuadGK at double-precision tolerances, a high order
+# beyond, where it needs far fewer integrand evaluations (12 times fewer at rtol = 1e-28 for level 2)
+_order(rtol) = Float64(rtol) >= 1e-12 ? 7 : 40
+
 # h(M, w) by quadrature along the ray v = ρ e^{iδ}, over the window in which the Gamma weight lives.
 # Computed in the precision of w.
 function _hyperterminant(M, w, δ; rtol = 1e-10)
@@ -101,7 +145,7 @@ function _hyperterminant(M, w, δ; rtol = 1e-10)
     peak = max(M - 1, 0) / c
     width = (_window(rtol) * sqrt(R(M)) + _tail(rtol)) / c
     lo = max(zero(R), peak - width)
-    quadgk(f, lo, max(peak, lo + R(1e-12)), peak + width; rtol = rtol)[1]
+    quadgk(f, lo, max(peak, lo + R(1e-12)), peak + width; rtol = rtol, order = _order(rtol))[1]
 end
 
 # Data shared by the recursion: Borel singularities, series and Stokes constants, in the precision C
@@ -195,7 +239,7 @@ function _edge_integral(R, F, w, N, Nl, δ; rtol = 1e-10)
     peak = max(N - Nl - 1, 0) / c
     width = (_window(rtol) * sqrt(Re(N - Nl + 1)) + _tail(rtol)) / c
     lo = max(zero(Re), peak - width)
-    exp(lg - N * log(w)) * quadgk(f, lo, max(peak, lo + Re(1e-12)), peak + width; rtol = rtol)[1]
+    exp(lg - N * log(w)) * quadgk(f, lo, max(peak, lo + Re(1e-12)), peak + width; rtol = rtol, order = _order(rtol))[1]
 end
 
 """
