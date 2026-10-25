@@ -219,4 +219,45 @@ end
         @test all(sign(imag(z - σ3)) == -sign(imag(σ3)) for z in arcpts if abs(real(z - σ3)) < 0.1)
     end
 end
+
+# Direction of the Laplace ray around Padé's cut system, on synthetic pole sets: a free direction, a
+# radial cut along the ray (Stokes line), a curved arc of poles across the ray (dense and sparse), a
+# Froissart doublet.
+@testset "Laplace direction around Padé poles" begin
+    dir(p, z = ComplexF64[]; kw...) = Resurgence.laplace_direction(p, z, 0.0; kw...)
+    @test dir([1.0im, -2.0 + 0im]) == (0.0, 0.0)
+    δθ, w = dir([2.0 + 0im, 3.0 + 0im, 2.0im])
+    @test abs(δθ - π / 4) < 0.01 && w < 0.04                       # lateral sum, as before
+    arc = [cis(θ) * (1 + 0.1m) for (m, θ) in enumerate(range(-0.5, 0.4, length = 20))]
+    δa, wa = dir(arc)
+    δb, _  = dir(arc; side = :below)
+    @test δa > 0.41 && δb < -0.51 && wa > 0.85                      # past either edge of the arc
+    sparse = [cis(θ) * (1 + 0.1m) for (m, θ) in enumerate(range(-0.5, 0.4, length = 6))]
+    @test dir(sparse)[1] > 0.41                                     # gaps between the poles are bridged
+    @test dir([2.0 + 0im], [2.0 + 1e-12im]) == (0.0, 0.0)           # Froissart doublet ignored
+end
+
+# A Laplace ray that crosses Padé's (curved, Chebotarev) cut system: the saddle point x = -1 of x⁴/4 + x
+# has two adjacent singularities at ±0.65 - 1.125i, and for arg k = 80° the ray arg t = -80° passes
+# between them and crosses the arcs that join them. BorelPadeResum(trans, k) bends around the cuts
+# (neighbouring sector, with a warning); BorelPadeResum(transseries, j, K, k) adds the Stokes jump. Bending
+# above (around +0.65 - 1.125i) and below (around -0.65 - 1.125i) involves different jumps and must agree.
+@testset "Borel-Padé around Padé's cut system" begin setprecision(BigFloat, 128) do   # fast: 41 coefficients
+    progress("Borel-Padé around Padé's cut system (x⁴/4 + x)")
+    @polyvar q
+    fq = q^4 / 4 + q
+    GMq = GaussManin(fq)
+    tq = transseries(fq, GMq, 40; saddles = [[cis(BigFloat(π) * (2m + 1) / 3)] for m in 0:2])
+    Σq = ComplexF64[s.f₀ for s in tq]
+    Kq = round.(Int, real.(stokes_constants(Σq, [ComplexF64.(R) for R in GMq.Rs], 0;
+                                            T0 = ComplexF64[s.Ts[1] for s in tq], method = :matrix)))
+    j = argmin([abs(s.x[1] + 1) for s in tq])
+    k = 8 * cis(deg2rad(80))
+    Sa, _ = BorelPadeResum(tq, j, Kq, k; side = :above, rtol = 1e-11)
+    Sb, _ = BorelPadeResum(tq, j, Kq, k; side = :below, rtol = 1e-11)
+    Sbent = @test_logs (:warn, r"crosses Padé's cut system") BorelPadeResum(tq[j], k; rtol = 1e-11)[1]
+    @test abs(Sa - Sb) < 1e-9                                       # the two jumps differ by ~1e-4
+    @test abs(Sbent - Sa) > 1e-6                                    # the Stokes jump is not negligible
+    @test BorelPadeResum(tq, j, Kq, 6.0)[1] == BorelPadeResum(tq[j], 6.0)[1]   # no crossing: unchanged
+end end
 progress("done")

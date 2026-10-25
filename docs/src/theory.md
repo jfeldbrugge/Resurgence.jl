@@ -93,7 +93,7 @@ with the integer Stokes constant $K_{lj}$. Two saddle points are *adjacent* when
 !!! note "Sign convention"
     The package returns `K[l, j]` $= -K_{lj}$ with $K_{lj}$ the Stokes constants of the paper (the keyhole orientation of the package), so that the late-term relations below hold without a minus sign. The functions [`southeast`](@ref), [`superasymptotic`](@ref) and [`hyperasymptotic`](@ref) use the package convention by default.
 
-Alternatively, [`findStokesConstants`](@ref) estimates the Stokes constants from Borel–Padé approximants of the asymptotic series ([`findPoles`](@ref)), and [`BorelPadeResum`](@ref) resums a single series by a Laplace transform of its Padé approximant.
+Alternatively, [`findStokesConstants`](@ref) estimates the Stokes constants from Borel–Padé approximants of the asymptotic series ([`findPoles`](@ref)), and [`BorelPadeResum`](@ref) resums a single series by a Laplace transform of its Padé approximant. The Padé approximant imitates the branch cuts of the Borel transform by rows of poles, which for several singularities form curved arcs. When the Laplace ray in the direction $\arg t = -\arg k$ would cross them, `BorelPadeResum` bends the ray around them, yielding the Borel sum of the neighbouring sector; `BorelPadeResum(transseries, j, K, k)` adds the Stokes jumps $K_{lj}\, e^{-k(t_l - t_j)}\, S_l(k)$ of the singularities in between and returns the Borel sum in the direction $-\arg k$.
 
 ## Approximating the integral
 
